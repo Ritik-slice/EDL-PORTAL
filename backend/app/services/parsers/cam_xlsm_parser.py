@@ -1,9 +1,9 @@
 """
 Parser for .xlsm CAM Excel files from Slice's lending platform.
 
-Extracts data from 40+ sheets including application details, bureau scores,
-banking, GST, financials, scorecard, deviations, and more. Tracks editable
-(yellow-highlighted) cells for underwriter workflow.
+Extracts data from ALL 25 user-facing sheets plus the Output sheet.
+Tracks editable (yellow-highlighted) cells for underwriter workflow.
+Each sheet includes a ``_raw_grid`` for pixel-perfect frontend rendering.
 """
 
 import io
@@ -12,37 +12,47 @@ from typing import Any, Optional
 
 import openpyxl
 from openpyxl.cell.cell import Cell
-from openpyxl.utils import get_column_letter
+from openpyxl.utils import get_column_letter, column_index_from_string
 
 logger = logging.getLogger(__name__)
 
-# Yellow-ish fill colors indicating editable cells
+# ---------------------------------------------------------------------------
+# Yellow / editable detection
+# ---------------------------------------------------------------------------
+
 _YELLOW_COLORS = {
-    "FFFFFF00", "FFFBFF8E", "FFFFFFFF", "FFFFFF99",
+    "FFFFFF00", "FFFBFF8E", "FFFFFF99",
     "FFFFFFCC", "FFFFF2CC", "FFFFFFE0", "FFFBFF00",
 }
 
 
 def _is_yellow(cell: Cell) -> bool:
-    """Check if a cell has a yellow background fill (editable marker)."""
+    """Return True when *cell* has a yellow background (editable marker)."""
     try:
         fill = cell.fill
-        if fill and fill.fgColor and fill.fgColor.rgb:
-            rgb = str(fill.fgColor.rgb).upper()
-            if rgb in _YELLOW_COLORS:
-                return True
-            # Heuristic: high R, high G, low B with FF alpha
-            if len(rgb) == 8 and rgb.startswith("FF"):
-                r, g, b = int(rgb[2:4], 16), int(rgb[4:6], 16), int(rgb[6:8], 16)
-                if r > 200 and g > 200 and b < 150:
+        for color_attr in ("fgColor", "bgColor"):
+            color = getattr(fill, color_attr, None)
+            if color and color.rgb:
+                rgb = str(color.rgb).upper()
+                if rgb in _YELLOW_COLORS:
                     return True
-        if fill and fill.bgColor and fill.bgColor.rgb:
-            rgb = str(fill.bgColor.rgb).upper()
-            if rgb in _YELLOW_COLORS:
-                return True
+                # Heuristic: FFRRGGBB with high R, high G, low B
+                if len(rgb) == 8 and rgb.startswith("FF"):
+                    r = int(rgb[2:4], 16)
+                    g = int(rgb[4:6], 16)
+                    b = int(rgb[6:8], 16)
+                    if r > 200 and g > 200 and b < 150:
+                        return True
     except Exception:
         pass
     return False
+
+
+# ---------------------------------------------------------------------------
+# Value helpers
+# ---------------------------------------------------------------------------
+
+_FORMULA_ERRORS = ("#REF!", "#N/A", "#VALUE!", "#DIV/0!", "#NAME?", "#NULL!", "#NUM!")
 
 
 def _safe_value(cell: Cell) -> Any:
@@ -50,7 +60,7 @@ def _safe_value(cell: Cell) -> Any:
     if cell is None:
         return None
     v = cell.value
-    if isinstance(v, str) and v.startswith(("#REF!", "#N/A", "#VALUE!", "#DIV/0!", "#NAME?")):
+    if isinstance(v, str) and any(v.startswith(e) for e in _FORMULA_ERRORS):
         return None
     return v
 
@@ -58,7 +68,8 @@ def _safe_value(cell: Cell) -> Any:
 def _safe_str(val: Any) -> Optional[str]:
     if val is None:
         return None
-    return str(val).strip() or None
+    s = str(val).strip()
+    return s or None
 
 
 def _safe_float(val: Any) -> Optional[float]:
@@ -72,721 +83,1173 @@ def _safe_float(val: Any) -> Optional[float]:
 
 def _safe_int(val: Any) -> Optional[int]:
     f = _safe_float(val)
-    if f is None:
-        return None
-    return int(f)
+    return None if f is None else int(f)
 
+
+# ---------------------------------------------------------------------------
+# Sheet lookup
+# ---------------------------------------------------------------------------
 
 def _get_sheet(wb, name: str):
-    """Get sheet by name, case-insensitive. Returns None if not found."""
+    """Case-insensitive sheet lookup. Returns None when missing."""
+    lower = name.lower()
     for sn in wb.sheetnames:
-        if sn.lower() == name.lower():
+        if sn.lower() == lower:
             return wb[sn]
-    logger.warning("Sheet '%s' not found in workbook", name)
+    # Also try with common variations
+    for sn in wb.sheetnames:
+        sn_clean = sn.lower().replace(" ", "_").replace("-", "_")
+        name_clean = lower.replace(" ", "_").replace("-", "_")
+        if sn_clean == name_clean:
+            return wb[sn]
     return None
 
 
-def _cell_ref(sheet_name: str, row: int, col: int) -> str:
-    return f"{sheet_name}!{get_column_letter(col)}{row}"
+def _find_sheet(wb_data, wb_style, name: str):
+    """Return (ws_data, ws_style) tuple, either may be None."""
+    return _get_sheet(wb_data, name), _get_sheet(wb_style, name)
 
 
-def _track_editable(
+# ---------------------------------------------------------------------------
+# Raw grid builder
+# ---------------------------------------------------------------------------
+
+def _build_raw_grid(
+    ws_data,
+    ws_style,
+    min_row: int,
+    max_row: int,
+    min_col: int,
+    max_col: int,
+    header_row: Optional[int] = None,
+) -> dict:
+    """
+    Build a raw grid dict for the frontend.
+
+    Returns::
+
+        {
+            "headers": [...],
+            "rows": [
+                {"cells": [{"value": ..., "editable": bool, "col": "A", "row": 1}, ...]}
+            ]
+        }
+    """
+    headers = []
+    if header_row is not None and ws_data is not None:
+        for col in range(min_col, max_col + 1):
+            h = _safe_value(ws_data.cell(row=header_row, column=col))
+            headers.append(_safe_str(h) if h is not None else None)
+
+    rows = []
+    if ws_data is None:
+        return {"headers": headers, "rows": rows}
+
+    for row in range(min_row, max_row + 1):
+        cells = []
+        for col in range(min_col, max_col + 1):
+            val = _safe_value(ws_data.cell(row=row, column=col))
+            editable = False
+            if ws_style is not None:
+                try:
+                    editable = _is_yellow(ws_style.cell(row=row, column=col))
+                except Exception:
+                    pass
+            cells.append({
+                "value": val,
+                "editable": editable,
+                "col": get_column_letter(col),
+                "row": row,
+            })
+        rows.append({"cells": cells})
+
+    return {"headers": headers, "rows": rows}
+
+
+# ---------------------------------------------------------------------------
+# Editable-field tracker
+# ---------------------------------------------------------------------------
+
+def _track_if_yellow(
     editable_fields: list,
-    ws,
+    ws_style,
     sheet_name: str,
     row: int,
     col: int,
+    value: Any = None,
     key: Optional[str] = None,
 ):
-    """If cell is yellow, add to editable_fields tracker."""
-    cell = ws.cell(row=row, column=col)
-    if _is_yellow(cell):
-        editable_fields.append({
-            "sheet": sheet_name,
-            "cell": f"{get_column_letter(col)}{row}",
-            "key": key,
-            "current_value": _safe_value(cell),
-        })
+    """Append to *editable_fields* when the style-workbook cell is yellow."""
+    if ws_style is None:
+        return
+    try:
+        cell = ws_style.cell(row=row, column=col)
+        if _is_yellow(cell):
+            editable_fields.append({
+                "sheet": sheet_name,
+                "cell": f"{get_column_letter(col)}{row}",
+                "key": key,
+                "current_value": value,
+            })
+    except Exception:
+        pass
 
 
-def _parse_processed_data_basic(wb, editable_fields: list) -> dict:
-    ws = _get_sheet(wb, "Processed_Data_Basic")
-    if ws is None:
+# ---------------------------------------------------------------------------
+# Generic helpers used by multiple sheet parsers
+# ---------------------------------------------------------------------------
+
+def _parse_label_value_sheet(
+    ws_data, ws_style, sheet_name: str,
+    label_col: int, value_col: int,
+    min_row: int, max_row: int,
+    editable_fields: list,
+) -> dict:
+    """Parse a sheet where col *label_col* has labels and *value_col* has values."""
+    if ws_data is None:
         return {}
-
     result = {}
-    # Rows 3-38, cols B(2) to AU(47). Layout is label in one col, value in next.
-    # Read all cells into a flat map by scanning row by row.
-    data = {}
-    for row in range(3, 39):
-        for col in range(2, 48):
-            val = _safe_value(ws.cell(row=row, column=col))
+    for row in range(min_row, max_row + 1):
+        label = _safe_str(_safe_value(ws_data.cell(row=row, column=label_col)))
+        val = _safe_value(ws_data.cell(row=row, column=value_col))
+        if label:
+            result[label] = val
+            _track_if_yellow(editable_fields, ws_style, sheet_name, row, value_col, val, label)
+    return result
+
+
+def _parse_table_sheet(
+    ws_data, ws_style, sheet_name: str,
+    header_row: int, data_min_row: int, data_max_row: int,
+    min_col: int, max_col: int,
+    editable_fields: list,
+) -> list:
+    """Parse a table sheet with a header row into a list of dicts."""
+    if ws_data is None:
+        return []
+
+    headers = []
+    for col in range(min_col, max_col + 1):
+        h = _safe_str(_safe_value(ws_data.cell(row=header_row, column=col)))
+        headers.append(h or f"col_{get_column_letter(col)}")
+
+    items = []
+    for row in range(data_min_row, data_max_row + 1):
+        row_data = {}
+        has_data = False
+        for i, col in enumerate(range(min_col, max_col + 1)):
+            val = _safe_value(ws_data.cell(row=row, column=col))
             if val is not None:
-                data[(row, col)] = val
-            _track_editable(editable_fields, ws, "Processed_Data_Basic", row, col)
-
-    # Extract known fields by scanning label-value pairs (label in col, value in col+1)
-    label_map = {}
-    for row in range(3, 39):
-        for col in range(2, 47):
-            cell_val = _safe_str(data.get((row, col)))
-            if cell_val:
-                label_map[cell_val.lower().strip().rstrip(":")] = data.get((row, col + 1))
-
-    # Map known fields
-    field_mappings = {
-        "applied date": "applied_date",
-        "cam id": "cam_id",
-        "branch": "branch",
-        "loan amount": "loan_amount",
-        "loan type": "loan_type",
-        "app id": "app_id",
-        "application id": "app_id",
-        "pan number": "pan_number",
-        "pan status": "pan_status",
-        "udyam number": "udyam_number",
-        "business name": "business_name",
-        "constitution": "constitution",
-        "registration date": "registration_date",
-        "nature of business": "nature_of_business",
-        "business type": "business_type",
-        "date of commencement": "date_of_commencement",
-        "enterprise type": "enterprise_type",
-        "social category": "social_category",
-        "applicant name": "applicant_name",
-        "name": "applicant_name",
-        "mobile": "mobile",
-        "email": "email",
-        "dob": "dob",
-        "date of birth": "dob",
-        "age": "age",
-        "father's name": "fathers_name",
-        "father name": "fathers_name",
-        "occupation": "occupation",
-        "aadhar address": "aadhar_address",
-        "current address": "current_address",
-        "primary security": "primary_security",
-        "secondary security": "secondary_security",
-        "annual turnover": "annual_turnover",
-        "net margin": "net_margin",
-        "monthly sales": "monthly_sales",
-        "current stock value": "current_stock_value",
-        "address ownership": "address_ownership",
-        "gst registration date": "gst_registration_date",
-        "gst reg date": "gst_registration_date",
-        "gst number": "gst_number",
-        "business vintage": "business_vintage",
-    }
-
-    for label_key, field_name in field_mappings.items():
-        if label_key in label_map:
-            result[field_name] = label_map[label_key]
-
-    # Co-applicants (up to 4)
-    co_applicants = []
-    for i in range(1, 5):
-        prefix_variants = [f"co-applicant {i}", f"co applicant {i}", f"coapplicant {i}", f"co-borrower {i}"]
-        co = {}
-        for label_key, val in label_map.items():
-            for pv in prefix_variants:
-                if label_key.startswith(pv):
-                    field = label_key.replace(pv, "").strip().lstrip("-").strip()
-                    if field:
-                        co[field.replace(" ", "_")] = val
-        if co:
-            co_applicants.append(co)
-
-    if co_applicants:
-        result["co_applicants"] = co_applicants
-
-    # References
-    refs = []
-    for label_key, val in label_map.items():
-        if "reference" in label_key and val:
-            refs.append({"label": label_key, "value": val})
-    if refs:
-        result["references"] = refs
-
-    # Store full label map for anything we missed
-    result["_raw_labels"] = {k: v for k, v in label_map.items() if v is not None}
-
-    return result
+                has_data = True
+            row_data[headers[i]] = val
+            _track_if_yellow(editable_fields, ws_style, sheet_name, row, col, val, headers[i])
+        if has_data:
+            items.append(row_data)
+    return items
 
 
-def _parse_output(wb, editable_fields: list) -> dict:
-    ws = _get_sheet(wb, "Output")
+# ---------------------------------------------------------------------------
+# Sheet extent helpers
+# ---------------------------------------------------------------------------
+
+def _sheet_extent(ws) -> tuple:
+    """Return (max_row, max_col) of actual data in the sheet."""
     if ws is None:
+        return (0, 0)
+    return (ws.max_row or 0, ws.max_column or 0)
+
+
+# ===========================================================================
+# Individual sheet parsers
+# ===========================================================================
+
+# 1. Demographic (108 rows) ------------------------------------------------
+
+def _parse_demographic(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
         return {}
-
-    result = {}
-    for row in range(1, 170):
-        key = _safe_str(_safe_value(ws.cell(row=row, column=1)))
-        value = _safe_value(ws.cell(row=row, column=2))
-        if key:
-            result[key] = value
-            _track_editable(editable_fields, ws, "Output", row, 2, key)
-    return result
-
-
-def _parse_demographic(wb, editable_fields: list) -> dict:
-    ws = _get_sheet(wb, "Demographic")
-    if ws is None:
-        return {}
+    sn = "Demographic"
+    max_row = max(108, _sheet_extent(ws_data)[0])
+    max_col = min(10, _sheet_extent(ws_data)[1] or 10)
 
     result = {}
     current_section = "general"
-    for row in range(1, 125):
-        b = _safe_str(_safe_value(ws.cell(row=row, column=2)))
-        c = _safe_value(ws.cell(row=row, column=3))
-        d = _safe_str(_safe_value(ws.cell(row=row, column=4)))
-        e = _safe_value(ws.cell(row=row, column=5))
+    for row in range(1, max_row + 1):
+        b = _safe_str(_safe_value(ws_data.cell(row=row, column=2)))
+        c = _safe_value(ws_data.cell(row=row, column=3))
+        d = _safe_str(_safe_value(ws_data.cell(row=row, column=4)))
+        e = _safe_value(ws_data.cell(row=row, column=5))
 
-        # Detect section headers
-        if b and not c and not d:
-            section_lower = b.lower()
-            if any(kw in section_lower for kw in [
-                "sourcing", "loan application", "business", "co-borrower", "co-applicant"
+        # Section headers
+        if b and c is None and d is None:
+            lower = b.lower()
+            if any(kw in lower for kw in [
+                "sourcing", "loan app", "business", "co-borrower",
+                "co-applicant", "co borrower", "co applicant",
             ]):
                 current_section = b.strip()
-                if current_section not in result:
-                    result[current_section] = {}
+                result.setdefault(current_section, {})
                 continue
 
         section_dict = result.setdefault(current_section, {})
         if b and c is not None:
             section_dict[b] = c
-            _track_editable(editable_fields, ws, "Demographic", row, 3)
+            _track_if_yellow(editable_fields, ws_style, sn, row, 3, c, b)
         if d and e is not None:
             section_dict[d] = e
-            _track_editable(editable_fields, ws, "Demographic", row, 5)
+            _track_if_yellow(editable_fields, ws_style, sn, row, 5, e, d)
 
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    result["_raw_grid"] = raw
     return result
 
 
-def _parse_bureau(wb, editable_fields: list) -> dict:
-    ws = _get_sheet(wb, "Bureau")
-    if ws is None:
-        return {"scores": [], "existing_loans": [], "commercial_bureau": {}}
+# 2. Bureau (89 rows) ------------------------------------------------------
 
+def _parse_bureau(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"scores": [], "existing_loans": [], "commercial_bureau": {}, "_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Bureau"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(89, mr)
+    max_col = max(17, mc)
+
+    # Scores rows 3-15
     scores = []
-    # Row 3 is header, row 4 is Business, rows 5+ are applicants
-    # Cols: A=Applicant Index, B=Applicant type, C=Name, D=Provider, E=Score, F=Fetch date, G=NTC Flag
-    for row in range(4, 16):
-        applicant_type = _safe_str(_safe_value(ws.cell(row=row, column=2)))
+    for row in range(3, 16):
+        applicant_type = _safe_str(_safe_value(ws_data.cell(row=row, column=2)))
         if not applicant_type:
             continue
-        name = _safe_value(ws.cell(row=row, column=3))
-        provider = _safe_str(_safe_value(ws.cell(row=row, column=4)))
-        score_val = _safe_value(ws.cell(row=row, column=5))
-        # Try to get numeric score
-        numeric_score = None
-        try:
-            numeric_score = int(float(score_val)) if score_val else None
-        except (ValueError, TypeError):
-            pass
-        score_entry = {
-            "applicant_index": _safe_value(ws.cell(row=row, column=1)),
+        score_val = _safe_value(ws_data.cell(row=row, column=5))
+        numeric_score = _safe_int(score_val)
+        entry = {
+            "applicant_index": _safe_value(ws_data.cell(row=row, column=1)),
             "type": applicant_type,
-            "name": name,
-            "provider": provider,
+            "name": _safe_value(ws_data.cell(row=row, column=3)),
+            "provider": _safe_str(_safe_value(ws_data.cell(row=row, column=4))),
             "score": numeric_score,
             "score_raw": score_val,
-            "fetch_date": _safe_value(ws.cell(row=row, column=6)),
-            "ntc_flag": _safe_value(ws.cell(row=row, column=7)),
+            "fetch_date": _safe_value(ws_data.cell(row=row, column=6)),
+            "ntc_flag": _safe_value(ws_data.cell(row=row, column=7)),
         }
-        scores.append(score_entry)
+        scores.append(entry)
         for col in range(1, 8):
-            _track_editable(editable_fields, ws, "Bureau", row, col)
+            _track_if_yellow(editable_fields, ws_style, sn, row, col,
+                             _safe_value(ws_data.cell(row=row, column=col)))
 
-    # Commercial Bureau (row 4, cols J/K/L)
+    # Commercial bureau
     commercial_bureau = {
-        "name": _safe_value(ws.cell(row=4, column=10)),
-        "score": _safe_value(ws.cell(row=4, column=11)),
-        "details": _safe_value(ws.cell(row=4, column=12)),
+        "name": _safe_value(ws_data.cell(row=4, column=10)),
+        "score": _safe_value(ws_data.cell(row=4, column=11)),
+        "details": _safe_value(ws_data.cell(row=4, column=12)),
     }
     for col in [10, 11, 12]:
-        _track_editable(editable_fields, ws, "Bureau", 4, col, f"commercial_bureau_col{col}")
+        _track_if_yellow(editable_fields, ws_style, sn, 4, col,
+                         _safe_value(ws_data.cell(row=4, column=col)),
+                         f"commercial_bureau_col{col}")
 
-    # Existing Loans (rows 18+)
+    # Existing loans rows 18+
     existing_loans = []
-    for row in range(18, 92):
-        applicant_idx = _safe_value(ws.cell(row=row, column=2))
+    for row in range(18, max_row + 1):
+        applicant_idx = _safe_value(ws_data.cell(row=row, column=2))
         if applicant_idx is None:
             continue
         loan = {
             "applicant_index": applicant_idx,
-            "borrower": _safe_value(ws.cell(row=row, column=3)),
-            "financier": _safe_value(ws.cell(row=row, column=4)),
-            "loan_type": _safe_value(ws.cell(row=row, column=5)),
-            "amount": _safe_value(ws.cell(row=row, column=6)),
-            "pos": _safe_value(ws.cell(row=row, column=7)),
-            "term": _safe_value(ws.cell(row=row, column=8)),
-            "mob": _safe_value(ws.cell(row=row, column=9)),
-            "emi_assessed": _safe_value(ws.cell(row=row, column=10)),
-            "obligated": _safe_value(ws.cell(row=row, column=12)),
-            "bt_flag": _safe_value(ws.cell(row=row, column=14)),
-            "foreclosure_flag": _safe_value(ws.cell(row=row, column=16)),
-            "duplicate_flag": _safe_value(ws.cell(row=row, column=17)),
+            "borrower": _safe_value(ws_data.cell(row=row, column=3)),
+            "financier": _safe_value(ws_data.cell(row=row, column=4)),
+            "loan_type": _safe_value(ws_data.cell(row=row, column=5)),
+            "amount": _safe_value(ws_data.cell(row=row, column=6)),
+            "pos": _safe_value(ws_data.cell(row=row, column=7)),
+            "term": _safe_value(ws_data.cell(row=row, column=8)),
+            "mob": _safe_value(ws_data.cell(row=row, column=9)),
+            "emi_assessed": _safe_value(ws_data.cell(row=row, column=10)),
+            "obligated": _safe_value(ws_data.cell(row=row, column=12)),
+            "bt_flag": _safe_value(ws_data.cell(row=row, column=14)),
+            "foreclosure_flag": _safe_value(ws_data.cell(row=row, column=16)),
+            "duplicate_flag": _safe_value(ws_data.cell(row=row, column=17)),
         }
         existing_loans.append(loan)
-        # Track yellow cells (rows 69-70 are manual entry rows)
         for col in range(2, 18):
-            _track_editable(editable_fields, ws, "Bureau", row, col,
-                            f"existing_loan_r{row}_c{col}")
+            _track_if_yellow(editable_fields, ws_style, sn, row, col,
+                             _safe_value(ws_data.cell(row=row, column=col)),
+                             f"existing_loan_r{row}_c{col}")
 
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=2)
     return {
         "scores": scores,
         "existing_loans": existing_loans,
         "commercial_bureau": commercial_bureau,
+        "_raw_grid": raw,
     }
 
 
-def _parse_banking(wb, editable_fields: list) -> dict:
-    ws = _get_sheet(wb, "Banking")
-    if ws is None:
-        return {}
+# 3. Banking (175 rows) ----------------------------------------------------
 
-    result = {"auto_pull": [], "manual_pull": []}
-    current_section = "auto_pull"
+def _parse_banking(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"auto_pull": [], "manual_pull": [], "_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Banking"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(175, mr)
 
-    for row in range(1, 290):
-        b_val = _safe_str(_safe_value(ws.cell(row=row, column=2)))
-        if b_val and "manual" in b_val.lower() and "pull" in b_val.lower():
-            current_section = "manual_pull"
-            continue
-
-        # Collect row data
+    # Auto pull: cols B-P (2-16)
+    auto_pull = []
+    for row in range(1, max_row + 1):
         row_data = {}
         has_data = False
-        for col in range(2, 39):
-            val = _safe_value(ws.cell(row=row, column=col))
+        for col in range(2, 17):  # B-P
+            val = _safe_value(ws_data.cell(row=row, column=col))
             if val is not None:
                 row_data[f"col_{get_column_letter(col)}"] = val
                 has_data = True
-            _track_editable(editable_fields, ws, "Banking", row, col)
+            _track_if_yellow(editable_fields, ws_style, sn, row, col, val)
+        if has_data:
+            auto_pull.append({"row": row, **row_data})
 
-        if has_data and row_data:
-            result[current_section].append({"row": row, **row_data})
+    # Manual pull: cols R-AG (18-33)
+    manual_pull = []
+    for row in range(1, max_row + 1):
+        row_data = {}
+        has_data = False
+        for col in range(18, 34):  # R-AG
+            val = _safe_value(ws_data.cell(row=row, column=col))
+            if val is not None:
+                row_data[f"col_{get_column_letter(col)}"] = val
+                has_data = True
+            _track_if_yellow(editable_fields, ws_style, sn, row, col, val)
+        if has_data:
+            manual_pull.append({"row": row, **row_data})
 
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, min(33, mc or 33), header_row=1)
+    return {"auto_pull": auto_pull, "manual_pull": manual_pull, "_raw_grid": raw}
+
+
+# 4. Additional Credit Checks (16 rows) ------------------------------------
+
+def _parse_additional_credit_checks(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Additional Credit Checks"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(16, mr)
+    max_col = max(8, mc or 8)
+
+    result = {}
+    for row in range(1, max_row + 1):
+        label = _safe_str(_safe_value(ws_data.cell(row=row, column=2)))
+        val = _safe_value(ws_data.cell(row=row, column=3))
+        if label:
+            result[label] = val
+            _track_if_yellow(editable_fields, ws_style, sn, row, 3, val, label)
+        # Some checks have additional columns
+        for col in range(4, max_col + 1):
+            extra_val = _safe_value(ws_data.cell(row=row, column=col))
+            if extra_val is not None and label:
+                result[f"{label}_col{get_column_letter(col)}"] = extra_val
+                _track_if_yellow(editable_fields, ws_style, sn, row, col, extra_val, f"{label}_col{get_column_letter(col)}")
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    result["_raw_grid"] = raw
     return result
 
 
-def _parse_gst(wb, editable_fields: list) -> dict:
-    ws = _get_sheet(wb, "GST")
-    if ws is None:
-        return {"auto_pull": {}, "manual_pull": {}, "monthly_filings": []}
+# 5. GST (30 rows) ---------------------------------------------------------
 
-    # Auto pull: B=label, C=value (rows 3-6 for header, 10-21 for monthly: B=Month, C=FY, D=Amount)
+def _parse_gst(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"auto_pull": {}, "manual_pull": {}, "monthly_filings": [],
+                "_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "GST"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(30, mr)
+
+    # Auto pull header: rows 3-6, B=label, C=value, D=extra
     auto_pull = {}
     for row in [3, 4, 5, 6]:
-        key = _safe_str(_safe_value(ws.cell(row=row, column=2)))
-        val = _safe_value(ws.cell(row=row, column=3))
-        if key and val:
+        key = _safe_str(_safe_value(ws_data.cell(row=row, column=2)))
+        val = _safe_value(ws_data.cell(row=row, column=3))
+        if key:
             auto_pull[key] = val
 
-    # Manual pull: H=label, I=value (rows 3-6 for header info, YELLOW editable)
+    # Auto pull monthly: rows 10-21, B=Month, C=FY, D=Amount
+    auto_monthly = []
+    for row in range(10, 22):
+        month = _safe_value(ws_data.cell(row=row, column=2))
+        if month is None or str(month).strip() in ("", "Total", "00:00:00"):
+            continue
+        auto_monthly.append({
+            "month": month,
+            "fy": _safe_value(ws_data.cell(row=row, column=3)),
+            "amount": _safe_value(ws_data.cell(row=row, column=4)),
+            "source": "auto",
+        })
+
+    # Manual pull header: rows 3-6, H=label, I=value
     manual_pull = {}
-    field_map = {3: "gstin", 4: "status", 5: "latest_month", 6: "frequency"}
-    for row, field_name in field_map.items():
-        label = _safe_str(_safe_value(ws.cell(row=row, column=8)))
-        val = _safe_value(ws.cell(row=row, column=9))
-        if val is not None:
-            manual_pull[field_name] = val
-            _track_editable(editable_fields, ws, "GST", row, 9, f"gst_{field_name}")
-        elif label:
-            manual_pull[field_name] = None
+    manual_field_map = {3: "gstin", 4: "status", 5: "latest_month", 6: "frequency"}
+    for row, field_name in manual_field_map.items():
+        label = _safe_str(_safe_value(ws_data.cell(row=row, column=8)))
+        val = _safe_value(ws_data.cell(row=row, column=9))
+        manual_pull[field_name] = val
+        _track_if_yellow(editable_fields, ws_style, sn, row, 9, val, f"gst_{field_name}")
 
-    # Monthly filings — Auto pull (B=Month, C=FY, D=Amount, rows 10-21)
-    monthly_filings = []
+    # Manual pull monthly: rows 10-21, H=Month, I=FY, J=Amount
+    manual_monthly = []
     for row in range(10, 22):
-        month = _safe_value(ws.cell(row=row, column=2))
-        amount = _safe_value(ws.cell(row=row, column=4))
-        if month is not None and str(month).strip() not in ("", "Total", "00:00:00"):
-            monthly_filings.append({
-                "month": month,
-                "fy": _safe_value(ws.cell(row=row, column=3)),
-                "amount": amount,
-                "source": "auto",
-            })
+        month = _safe_value(ws_data.cell(row=row, column=8))
+        if month is None or str(month).strip() in ("", "Total", "00:00:00"):
+            continue
+        manual_monthly.append({
+            "month": month,
+            "fy": _safe_value(ws_data.cell(row=row, column=9)),
+            "amount": _safe_value(ws_data.cell(row=row, column=10)),
+            "source": "manual",
+            "editable": True,
+        })
+        for c in [8, 9, 10]:
+            _track_if_yellow(editable_fields, ws_style, sn, row, c,
+                             _safe_value(ws_data.cell(row=row, column=c)), f"gst_manual_r{row}")
 
-    # Monthly filings — Manual pull (H=Month, I=FY, J=Amount, rows 10-21, YELLOW)
-    for row in range(10, 22):
-        month = _safe_value(ws.cell(row=row, column=8))
-        amount = _safe_value(ws.cell(row=row, column=10))
-        if month is not None and str(month).strip() not in ("", "Total", "00:00:00"):
-            monthly_filings.append({
-                "month": month,
-                "fy": _safe_value(ws.cell(row=row, column=9)),
-                "amount": amount,
-                "source": "manual",
-                "editable": True,
-            })
-            for c in [8, 9, 10]:
-                _track_editable(editable_fields, ws, "GST", row, c, f"gst_manual_r{row}")
+    monthly_filings = auto_monthly + manual_monthly
 
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, min(10, mc or 10), header_row=None)
     return {
         "auto_pull": auto_pull,
         "manual_pull": manual_pull,
         "monthly_filings": monthly_filings,
+        "_raw_grid": raw,
     }
 
 
-def _parse_company_financials(wb, editable_fields: list) -> dict:
-    ws = _get_sheet(wb, "Company Financials")
-    if ws is None:
-        return {}
+# 6. ITR (5 rows) ----------------------------------------------------------
 
-    result = {}
-    for row in range(1, 42):
-        label = _safe_str(_safe_value(ws.cell(row=row, column=2)))
-        if not label:
-            continue
-        entry = {}
-        for col in range(3, 7):
-            header = _safe_str(_safe_value(ws.cell(row=1, column=col))) or f"col_{col}"
-            entry[header] = _safe_value(ws.cell(row=row, column=col))
-            _track_editable(editable_fields, ws, "Company Financials", row, col, label)
-        result[label] = entry
+def _parse_itr(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "ITR"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(5, mr)
+    max_col = max(6, mc or 6)
+
+    result = _parse_label_value_sheet(ws_data, ws_style, sn, 2, 3, 1, max_row, editable_fields)
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    result["_raw_grid"] = raw
     return result
 
 
-def _parse_aip(wb, editable_fields: list) -> dict:
-    ws = _get_sheet(wb, "AIP")
-    if ws is None:
-        return {"primary_income": {}, "bills": [], "secondary_income": []}
+# 7. Company Financials (39 rows) ------------------------------------------
 
+def _parse_company_financials(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"balance_sheet": {}, "pnl": {}, "_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Company Financials"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(39, mr)
+    max_col = max(6, mc or 6)
+
+    # Detect year headers from row 7 or row 1
+    year_headers = {}
+    for col in range(3, max_col + 1):
+        for hdr_row in [1, 7]:
+            h = _safe_str(_safe_value(ws_data.cell(row=hdr_row, column=col)))
+            if h:
+                year_headers[col] = h
+                break
+        if col not in year_headers:
+            year_headers[col] = f"col_{get_column_letter(col)}"
+
+    # Balance Sheet rows 8-16
+    balance_sheet = {}
+    for row in range(8, 17):
+        label = _safe_str(_safe_value(ws_data.cell(row=row, column=2)))
+        if not label:
+            continue
+        entry = {}
+        for col in range(3, max_col + 1):
+            val = _safe_value(ws_data.cell(row=row, column=col))
+            entry[year_headers.get(col, f"col_{col}")] = val
+            _track_if_yellow(editable_fields, ws_style, sn, row, col, val, label)
+        balance_sheet[label] = entry
+
+    # P&L rows 17-35
+    pnl = {}
+    for row in range(17, 36):
+        label = _safe_str(_safe_value(ws_data.cell(row=row, column=2)))
+        if not label:
+            continue
+        entry = {}
+        for col in range(3, max_col + 1):
+            val = _safe_value(ws_data.cell(row=row, column=col))
+            entry[year_headers.get(col, f"col_{col}")] = val
+            _track_if_yellow(editable_fields, ws_style, sn, row, col, val, label)
+        pnl[label] = entry
+
+    # Also grab remaining rows (36-39) as extras
+    extras = {}
+    for row in range(36, max_row + 1):
+        label = _safe_str(_safe_value(ws_data.cell(row=row, column=2)))
+        if not label:
+            continue
+        entry = {}
+        for col in range(3, max_col + 1):
+            val = _safe_value(ws_data.cell(row=row, column=col))
+            entry[year_headers.get(col, f"col_{col}")] = val
+            _track_if_yellow(editable_fields, ws_style, sn, row, col, val, label)
+        extras[label] = entry
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=7)
+    return {"balance_sheet": balance_sheet, "pnl": pnl, "extras": extras, "_raw_grid": raw}
+
+
+# 8. AIP (27 rows) ---------------------------------------------------------
+
+def _parse_aip(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"primary_income": {}, "bills_collection": [], "secondary_income": [],
+                "_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "AIP"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(27, mr)
+
+    # Primary income: cols B-G (2-7)
     primary_income = {}
-    for row in range(2, 20):
-        label = _safe_str(_safe_value(ws.cell(row=row, column=2)))
-        if label:
-            primary_income[label] = _safe_value(ws.cell(row=row, column=3))
-            _track_editable(editable_fields, ws, "AIP", row, 3, label)
+    for row in range(2, max_row + 1):
+        label = _safe_str(_safe_value(ws_data.cell(row=row, column=2)))
+        if not label:
+            continue
+        entry = {}
+        for col in range(3, 8):  # C-G
+            header = _safe_str(_safe_value(ws_data.cell(row=1, column=col))) or f"col_{get_column_letter(col)}"
+            val = _safe_value(ws_data.cell(row=row, column=col))
+            entry[header] = val
+            _track_if_yellow(editable_fields, ws_style, sn, row, col, val, label)
+        primary_income[label] = entry
 
-    # Kaccha pakka bills (cols J-O)
-    bills = []
-    for row in range(2, 37):
-        bill_type = _safe_value(ws.cell(row=row, column=10))
+    # Bills collection: cols J-O (10-15)
+    bills_collection = []
+    for row in range(2, max_row + 1):
+        bill_type = _safe_value(ws_data.cell(row=row, column=10))
         if bill_type is None:
             continue
         bill = {"type": bill_type}
-        for col in range(11, 16):
-            header = _safe_str(_safe_value(ws.cell(row=1, column=col))) or f"col_{col}"
-            bill[header] = _safe_value(ws.cell(row=row, column=col))
-            _track_editable(editable_fields, ws, "AIP", row, col, f"bill_r{row}")
-        bills.append(bill)
+        for col in range(11, 16):  # K-O
+            header = _safe_str(_safe_value(ws_data.cell(row=1, column=col))) or f"col_{get_column_letter(col)}"
+            val = _safe_value(ws_data.cell(row=row, column=col))
+            bill[header] = val
+            _track_if_yellow(editable_fields, ws_style, sn, row, col, val, f"bill_r{row}")
+        bills_collection.append(bill)
 
-    # Secondary income
+    # Secondary income (after primary, further rows)
     secondary_income = []
-    for row in range(20, 37):
-        label = _safe_str(_safe_value(ws.cell(row=row, column=2)))
-        val = _safe_value(ws.cell(row=row, column=3))
-        if label and val is not None:
+    for row in range(2, max_row + 1):
+        label = _safe_str(_safe_value(ws_data.cell(row=row, column=2)))
+        val = _safe_value(ws_data.cell(row=row, column=3))
+        if label and val is not None and "secondary" in label.lower():
             secondary_income.append({"label": label, "value": val})
 
+    max_c = max(15, mc or 15)
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_c, header_row=1)
     return {
         "primary_income": primary_income,
-        "bills": bills,
+        "bills_collection": bills_collection,
         "secondary_income": secondary_income,
+        "_raw_grid": raw,
     }
 
 
-def _parse_pd_notes(wb, editable_fields: list) -> dict:
-    ws = _get_sheet(wb, "PD notes")
-    if ws is None:
-        return {}
+# 9. PD notes (20 rows) ----------------------------------------------------
+
+def _parse_pd_notes(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "PD notes"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(20, mr)
+    max_col = max(5, mc or 5)
 
     result = {}
     current_section = None
 
-    for row in range(1, 95):
-        # Col A has labels for structured fields, col D has editable values
-        col_a = _safe_str(_safe_value(ws.cell(row=row, column=1)))
-        col_d = _safe_value(ws.cell(row=row, column=4))
+    for row in range(1, max_row + 1):
+        col_a = _safe_str(_safe_value(ws_data.cell(row=row, column=1)))
+        col_d = _safe_value(ws_data.cell(row=row, column=4))
 
-        # Detect section headers (e.g. "Notes on Borrower Profile")
+        # Section headers
         if col_a and "notes on" in col_a.lower():
             current_section = col_a
             continue
 
-        # Free-text note lines (in col A, spanning the row) — belong to current_section
+        # Free-text lines under a "Notes on" section
         if current_section and col_a and col_d is None:
             if current_section not in result:
                 result[current_section] = col_a
             else:
                 result[current_section] += "\n" + col_a
-            _track_editable(editable_fields, ws, "PD notes", row, 1, current_section)
+            _track_if_yellow(editable_fields, ws_style, sn, row, 1,
+                             col_a, current_section)
             continue
 
-        # Structured fields: col A = label, col D = value
+        # Structured: col A = label, col D = value
         if col_a and col_d is not None:
             result[col_a] = col_d
-            _track_editable(editable_fields, ws, "PD notes", row, 4, col_a)
+            _track_if_yellow(editable_fields, ws_style, sn, row, 4, col_d, col_a)
 
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col)
+    result["_raw_grid"] = raw
     return result
 
 
-def _parse_stock_details(wb, editable_fields: list) -> list:
-    ws = _get_sheet(wb, "Stock Details")
-    if ws is None:
-        return []
+# 10. Reference checks (4 rows) --------------------------------------------
+
+def _parse_reference_checks(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"references": [], "_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Reference checks"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(4, mr)
+    max_col = max(6, mc or 6)
+
+    references = []
+    for row in range(2, max_row + 1):
+        name = _safe_value(ws_data.cell(row=row, column=2))
+        if name is None:
+            continue
+        ref = {
+            "name": name,
+            "relation": _safe_value(ws_data.cell(row=row, column=3)),
+            "phone": _safe_value(ws_data.cell(row=row, column=4)),
+            "feedback": _safe_value(ws_data.cell(row=row, column=5)),
+        }
+        references.append(ref)
+        for col in range(2, max_col + 1):
+            _track_if_yellow(editable_fields, ws_style, sn, row, col,
+                             _safe_value(ws_data.cell(row=row, column=col)),
+                             f"ref_check_r{row}")
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    return {"references": references, "_raw_grid": raw}
+
+
+# 11. Loan purpose (12 rows) -----------------------------------------------
+
+def _parse_loan_purpose(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"items": [], "_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Loan purpose"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(12, mr)
+    max_col = max(5, mc or 5)
 
     items = []
-    for row in range(3, 23):  # Stop before row 23 which is "Total"
-        sl_no = _safe_value(ws.cell(row=row, column=1))
-        desc = _safe_value(ws.cell(row=row, column=2))
-        # Skip empty rows and the "Total" summary row
+    for row in range(2, max_row + 1):
+        sno = _safe_value(ws_data.cell(row=row, column=1))
+        end_use = _safe_value(ws_data.cell(row=row, column=2))
+        if sno is None and end_use is None:
+            continue
+        item = {
+            "s_no": sno,
+            "end_use": end_use,
+            "details": _safe_value(ws_data.cell(row=row, column=3)),
+            "amount": _safe_value(ws_data.cell(row=row, column=4)),
+        }
+        items.append(item)
+        for col in range(1, max_col + 1):
+            _track_if_yellow(editable_fields, ws_style, sn, row, col,
+                             _safe_value(ws_data.cell(row=row, column=col)),
+                             f"loan_purpose_r{row}")
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    return {"items": items, "_raw_grid": raw}
+
+
+# 12. Stock Details (11 rows) ----------------------------------------------
+
+def _parse_stock_details(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"items": [], "total": None, "_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Stock Details"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(23, mr)
+    max_col = max(5, mc or 5)
+
+    items = []
+    total = None
+    for row in range(2, max_row + 1):
+        sl_no = _safe_value(ws_data.cell(row=row, column=1))
+        desc = _safe_value(ws_data.cell(row=row, column=2))
+
+        # Row 23 is total
+        if row == 23 or (sl_no is not None and str(sl_no).strip().lower() == "total"):
+            total = _safe_value(ws_data.cell(row=row, column=5))
+            continue
+
         if sl_no is None and desc is None:
             continue
-        if str(sl_no).strip().lower() == "total":
-            continue
+
         item = {
             "sl_no": sl_no,
             "description": desc,
-            "quantity": _safe_value(ws.cell(row=row, column=3)),
-            "rate": _safe_value(ws.cell(row=row, column=4)),
-            "amount": _safe_value(ws.cell(row=row, column=5)),
-            "editable": True,  # Stock items are yellow/editable
+            "quantity": _safe_value(ws_data.cell(row=row, column=3)),
+            "rate": _safe_value(ws_data.cell(row=row, column=4)),
+            "amount": _safe_value(ws_data.cell(row=row, column=5)),
         }
         items.append(item)
         for col in range(1, 6):
-            _track_editable(editable_fields, ws, "Stock Details", row, col,
-                            f"stock_r{row}")
-    return items
+            _track_if_yellow(editable_fields, ws_style, sn, row, col,
+                             _safe_value(ws_data.cell(row=row, column=col)),
+                             f"stock_r{row}")
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    return {"items": items, "total": total, "_raw_grid": raw}
 
 
-def _parse_scorecard(wb, editable_fields: list) -> dict:
-    ws = _get_sheet(wb, "Scorecard")
-    if ws is None:
-        return {"total_score": None, "risk_band": None, "parameters": []}
+# 13. Plant & Machinery Details (23 rows) ----------------------------------
 
-    total_score = None
-    risk_band = None
+def _parse_plant_machinery(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"movable_pm": [], "vehicles": [],
+                "_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Plant & Machinery Details"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(23, mr)
+    max_col = max(8, mc or 8)
+
+    # Headers from row 1
+    headers = {}
+    for col in range(1, max_col + 1):
+        h = _safe_str(_safe_value(ws_data.cell(row=1, column=col)))
+        headers[col] = h or f"col_{get_column_letter(col)}"
+
+    def _parse_rows(start: int, end: int) -> list:
+        items = []
+        for row in range(start, end + 1):
+            row_data = {}
+            has_data = False
+            for col in range(1, max_col + 1):
+                val = _safe_value(ws_data.cell(row=row, column=col))
+                if val is not None:
+                    has_data = True
+                row_data[headers[col]] = val
+                _track_if_yellow(editable_fields, ws_style, sn, row, col, val,
+                                 f"pm_r{row}")
+            if has_data:
+                items.append(row_data)
+        return items
+
+    movable_pm = _parse_rows(2, 12)
+    vehicles = _parse_rows(14, 22)
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    return {"movable_pm": movable_pm, "vehicles": vehicles, "_raw_grid": raw}
+
+
+# 14. Property Details (98 rows) -------------------------------------------
+
+def _parse_property_details(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Property Details"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(98, mr)
+    max_col = max(8, mc or 8)
+
+    result = {}
+    current_section = "general"
+    for row in range(1, max_row + 1):
+        b = _safe_str(_safe_value(ws_data.cell(row=row, column=2)))
+        c = _safe_value(ws_data.cell(row=row, column=3))
+
+        # Detect section headers (Valuer 1, Valuer 2, LTV, Mortgager, etc.)
+        if b and c is None:
+            lower = b.lower()
+            if any(kw in lower for kw in [
+                "valuer", "ltv", "property", "mortgager", "collateral",
+                "market value", "distress",
+            ]):
+                current_section = b.strip()
+                result.setdefault(current_section, {})
+                continue
+
+        section_dict = result.setdefault(current_section, {})
+        if b and c is not None:
+            section_dict[b] = c
+            _track_if_yellow(editable_fields, ws_style, sn, row, 3, c, b)
+
+        # Also capture cols D-E if present
+        d = _safe_str(_safe_value(ws_data.cell(row=row, column=4)))
+        e = _safe_value(ws_data.cell(row=row, column=5))
+        if d and e is not None:
+            section_dict[d] = e
+            _track_if_yellow(editable_fields, ws_style, sn, row, 5, e, d)
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    result["_raw_grid"] = raw
+    return result
+
+
+# 15. Scorecard (38 rows) --------------------------------------------------
+
+def _parse_scorecard(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"total_score": None, "risk_band": None, "parameters": [],
+                "_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Scorecard"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(38, mr)
+    max_col = max(8, mc or 8)
+
+    # Total Score at B3/D3, Risk Band at B4/D4
+    total_score = _safe_value(ws_data.cell(row=3, column=4))
+    if total_score is None:
+        total_score = _safe_value(ws_data.cell(row=3, column=2))
+    total_score = _safe_int(total_score)
+
+    risk_band = _safe_str(_safe_value(ws_data.cell(row=4, column=4)))
+    if not risk_band:
+        risk_band = _safe_str(_safe_value(ws_data.cell(row=4, column=2)))
+
+    # Parameters rows 8+: B=sr_no, C=parameter, F=max_score, G=criteria(YELLOW), H=marks
     parameters = []
+    for row in range(8, max_row + 1):
+        param_name = _safe_str(_safe_value(ws_data.cell(row=row, column=3)))
+        marks = _safe_value(ws_data.cell(row=row, column=8))
+        if not param_name:
+            continue
+        param = {
+            "sr_no": _safe_value(ws_data.cell(row=row, column=2)),
+            "parameter": param_name,
+            "max_score": _safe_value(ws_data.cell(row=row, column=6)),
+            "criteria": _safe_value(ws_data.cell(row=row, column=7)),
+            "marks": marks,
+        }
+        parameters.append(param)
+        _track_if_yellow(editable_fields, ws_style, sn, row, 7,
+                         _safe_value(ws_data.cell(row=row, column=7)),
+                         f"scorecard_criteria_{param_name}")
+        _track_if_yellow(editable_fields, ws_style, sn, row, 8, marks,
+                         f"scorecard_marks_{param_name}")
 
-    for row in range(1, 47):
-        b_val = _safe_str(_safe_value(ws.cell(row=row, column=2)))
-        c_val = _safe_str(_safe_value(ws.cell(row=row, column=3)))
-        d_val = _safe_value(ws.cell(row=row, column=4))
-        if b_val and "total score" in b_val.lower():
-            total_score = _safe_int(d_val)
-        if b_val and ("scoring quality" in b_val.lower() or "risk band" in b_val.lower()):
-            risk_band = _safe_str(d_val) or risk_band
-
-        # Parameters: B=sr_no, C=parameter, F=max_score, G=criteria, H=score
-        param_name = _safe_str(_safe_value(ws.cell(row=row, column=3)))
-        max_score = _safe_value(ws.cell(row=row, column=6))
-        criteria = _safe_value(ws.cell(row=row, column=7))
-        marks = _safe_value(ws.cell(row=row, column=8))
-        if param_name and marks is not None and row >= 8:
-            param = {
-                "sr_no": b_val,
-                "parameter": param_name,
-                "max_score": max_score,
-                "criteria": criteria,
-                "score": marks,
-            }
-            parameters.append(param)
-            _track_editable(editable_fields, ws, "Scorecard", row, 7,
-                            f"scorecard_criteria_{param_name}")
-            _track_editable(editable_fields, ws, "Scorecard", row, 8,
-                            f"scorecard_score_{param_name}")
-
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=7)
     return {
         "total_score": total_score,
         "risk_band": risk_band,
         "parameters": parameters,
+        "_raw_grid": raw,
     }
 
 
-def _parse_deviations(wb, editable_fields: list) -> list:
-    ws = _get_sheet(wb, "Deviations_Credit")
-    if ws is None:
-        return []
+# 16. Deviations_Credit (40 rows) ------------------------------------------
+
+def _parse_deviations_credit(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"deviations": [], "_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Deviations_Credit"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(40, mr)
+    max_col = max(8, mc or 8)
 
     deviations = []
-    for row in range(2, 44):
-        dev = _safe_value(ws.cell(row=row, column=2))
+    for row in range(2, max_row + 1):
+        dev = _safe_value(ws_data.cell(row=row, column=2))
         if dev is None:
             continue
         entry = {
             "deviation": dev,
-            "description": _safe_value(ws.cell(row=row, column=3)),
-            "mitigants": _safe_value(ws.cell(row=row, column=4)),
-            "approving_authority": _safe_value(ws.cell(row=row, column=5)),
-            "approval_status": _safe_value(ws.cell(row=row, column=6)),
-            "approved_by": _safe_value(ws.cell(row=row, column=7)),
-            "date": _safe_value(ws.cell(row=row, column=8)),
+            "description": _safe_value(ws_data.cell(row=row, column=3)),
+            "mitigants": _safe_value(ws_data.cell(row=row, column=4)),
+            "authority": _safe_value(ws_data.cell(row=row, column=5)),
+            "status": _safe_value(ws_data.cell(row=row, column=6)),
+            "approved_by": _safe_value(ws_data.cell(row=row, column=7)),
+            "date": _safe_value(ws_data.cell(row=row, column=8)),
         }
         deviations.append(entry)
-        for col in range(2, 14):
-            _track_editable(editable_fields, ws, "Deviations_Credit", row, col,
-                            f"deviation_r{row}")
-    return deviations
+        for col in range(2, max_col + 1):
+            _track_if_yellow(editable_fields, ws_style, sn, row, col,
+                             _safe_value(ws_data.cell(row=row, column=col)),
+                             f"deviation_r{row}")
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    return {"deviations": deviations, "_raw_grid": raw}
 
 
-def _parse_interest_rate(wb, editable_fields: list) -> dict:
-    ws = _get_sheet(wb, "Interest Rate Calculator")
-    if ws is None:
-        return {}
+# 17. Interest Rate Calculator (8 rows) ------------------------------------
 
-    result = {}
+def _parse_interest_rate(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Interest Rate Calculator"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(8, mr)
+    max_col = max(4, mc or 4)
+
     fields = [
         (2, "security_type"),
-        (3, "loan_amount_band"),
+        (3, "loan_band"),
         (4, "geography"),
-        (5, "bureau_score_band"),
-        (6, "credit_assessment_program"),
-        (7, "num_credit_deviations"),
+        (5, "bureau_band"),
+        (6, "program"),
+        (7, "deviations"),
         (8, "final_rate"),
     ]
+    result = {}
     for row, key in fields:
-        val = _safe_value(ws.cell(row=row, column=3))
+        label = _safe_str(_safe_value(ws_data.cell(row=row, column=2)))
+        val = _safe_value(ws_data.cell(row=row, column=3))
         result[key] = val
-        _track_editable(editable_fields, ws, "Interest Rate Calculator", row, 3, key)
+        _track_if_yellow(editable_fields, ws_style, sn, row, 3, val, key)
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    result["_raw_grid"] = raw
     return result
 
 
-def _parse_eligibility(wb, editable_fields: list) -> dict:
-    result = {}
-    for sheet_name in ["Eligibility_Inventory", "Eligibility_P&M", "Eligibility_Property",
-                       "Eligibility Inventory", "Eligibility P&M", "Eligibility Property"]:
-        ws = _get_sheet(wb, sheet_name)
-        if ws is None:
+# 18. Eligibility - Inventory (67 rows) ------------------------------------
+
+def _parse_eligibility_inventory(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Eligibility - Inventory"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(67, mr)
+    max_col = max(6, mc or 6)
+
+    result = _parse_label_value_sheet(ws_data, ws_style, sn, 2, 3, 1, max_row, editable_fields)
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    result["_raw_grid"] = raw
+    return result
+
+
+# 19. Eligibility - Property (67 rows) -------------------------------------
+
+def _parse_eligibility_property(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Eligibility - Property"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(67, mr)
+    max_col = max(6, mc or 6)
+
+    result = _parse_label_value_sheet(ws_data, ws_style, sn, 2, 3, 1, max_row, editable_fields)
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    result["_raw_grid"] = raw
+    return result
+
+
+# 20. Sanction Conditions (16 rows) ----------------------------------------
+
+def _parse_sanction_conditions(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"conditions": [], "_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Sanction Conditions"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(16, mr)
+    max_col = max(4, mc or 4)
+
+    conditions = []
+    for row in range(2, max_row + 1):
+        val = _safe_value(ws_data.cell(row=row, column=2))
+        if val is None:
+            val = _safe_value(ws_data.cell(row=row, column=1))
+        if val is None:
             continue
-        key = sheet_name.lower().replace(" ", "_").replace("eligibility_", "").replace("&", "and")
-        data = {}
-        for row in range(1, 50):
-            label = _safe_str(_safe_value(ws.cell(row=row, column=2)))
-            val = _safe_value(ws.cell(row=row, column=3))
-            if label:
-                data[label] = val
-                _track_editable(editable_fields, ws, sheet_name, row, 3, label)
-        if data:
-            result[key] = data
+        conditions.append(val)
+        for col in range(1, max_col + 1):
+            _track_if_yellow(editable_fields, ws_style, sn, row, col,
+                             _safe_value(ws_data.cell(row=row, column=col)),
+                             f"sanction_r{row}")
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    return {"conditions": conditions, "_raw_grid": raw}
+
+
+# 21. PSL (8 rows) ---------------------------------------------------------
+
+def _parse_psl(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "PSL"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(8, mr)
+    max_col = max(4, mc or 4)
+
+    result = _parse_label_value_sheet(ws_data, ws_style, sn, 2, 3, 1, max_row, editable_fields)
+    # Also try col A=label, col B=value
+    if not result:
+        result = _parse_label_value_sheet(ws_data, ws_style, sn, 1, 2, 1, max_row, editable_fields)
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    result["_raw_grid"] = raw
     return result
 
 
-def _parse_kv_sheet(wb, sheet_name: str, max_rows: int, editable_fields: list) -> list:
-    """Parse a sheet with label-value or tabular data into a list of dicts."""
-    ws = _get_sheet(wb, sheet_name)
-    if ws is None:
-        return []
+# 22. CGTMSE Calculator (17 rows) ------------------------------------------
 
-    items = []
-    for row in range(2, max_rows + 1):
-        row_data = {}
-        has_data = False
-        for col in range(2, 15):
-            val = _safe_value(ws.cell(row=row, column=col))
-            if val is not None:
-                header = _safe_str(_safe_value(ws.cell(row=1, column=col))) or f"col_{col}"
-                row_data[header] = val
-                has_data = True
-                _track_editable(editable_fields, ws, sheet_name, row, col)
-        if has_data:
-            items.append(row_data)
-    return items
+def _parse_cgtmse(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "CGTMSE Calculator"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(17, mr)
+    max_col = max(4, mc or 4)
 
+    result = _parse_label_value_sheet(ws_data, ws_style, sn, 2, 3, 1, max_row, editable_fields)
+    # Also try col A=label, col B=value
+    extra = _parse_label_value_sheet(ws_data, ws_style, sn, 1, 2, 1, max_row, editable_fields)
+    for k, v in extra.items():
+        if k not in result:
+            result[k] = v
 
-def _parse_loan_final(wb, editable_fields: list) -> dict:
-    ws = _get_sheet(wb, "Logic_Loan_Final_Values")
-    if ws is None:
-        return {}
-
-    # Col A = label, Col B = value, Col C = description
-    field_map = {2: "amount", 3: "tenure", 4: "interest_rate", 5: "emi"}
-    result = {}
-    for row, field_name in field_map.items():
-        val = _safe_value(ws.cell(row=row, column=2))
-        try:
-            result[field_name] = float(val) if val is not None else None
-        except (ValueError, TypeError):
-            result[field_name] = val
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    result["_raw_grid"] = raw
     return result
 
 
-def _parse_risk_band(wb, editable_fields: list) -> dict:
-    ws = _get_sheet(wb, "INPUT_Risk_Band")
-    if ws is None:
-        return {}
+# 23. Charges (21 rows) ----------------------------------------------------
+
+def _parse_charges(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Charges"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(21, mr)
+    max_col = max(5, mc or 5)
 
     result = {}
-    for row in range(1, 8):
-        key = _safe_str(_safe_value(ws.cell(row=row, column=1)))
-        val = _safe_value(ws.cell(row=row, column=2))
+    for row in range(1, max_row + 1):
+        label = _safe_str(_safe_value(ws_data.cell(row=row, column=2)))
+        if not label:
+            label = _safe_str(_safe_value(ws_data.cell(row=row, column=1)))
+        val = _safe_value(ws_data.cell(row=row, column=3))
+        if val is None:
+            val = _safe_value(ws_data.cell(row=row, column=2)) if label == _safe_str(_safe_value(ws_data.cell(row=row, column=1))) else None
+        if label and val is not None:
+            result[label] = val
+            _track_if_yellow(editable_fields, ws_style, sn, row, 3, val, label)
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    result["_raw_grid"] = raw
+    return result
+
+
+# 24. Disbursement (5 rows) ------------------------------------------------
+
+def _parse_disbursement(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Disbursement"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(5, mr)
+    max_col = max(5, mc or 5)
+
+    result = _parse_label_value_sheet(ws_data, ws_style, sn, 2, 3, 1, max_row, editable_fields)
+    if not result:
+        result = _parse_label_value_sheet(ws_data, ws_style, sn, 1, 2, 1, max_row, editable_fields)
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    result["_raw_grid"] = raw
+    return result
+
+
+# 25. Additional Information (12 rows) -------------------------------------
+
+def _parse_additional_information(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {"_raw_grid": _build_raw_grid(None, None, 1, 1, 1, 1)}
+    sn = "Additional Information"
+    mr, mc = _sheet_extent(ws_data)
+    max_row = max(12, mr)
+    max_col = max(5, mc or 5)
+
+    result = _parse_label_value_sheet(ws_data, ws_style, sn, 2, 3, 1, max_row, editable_fields)
+    if not result:
+        result = _parse_label_value_sheet(ws_data, ws_style, sn, 1, 2, 1, max_row, editable_fields)
+
+    raw = _build_raw_grid(ws_data, ws_style, 1, max_row, 1, max_col, header_row=1)
+    result["_raw_grid"] = raw
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Output sheet (160 key-value pairs)
+# ---------------------------------------------------------------------------
+
+def _parse_output(ws_data, ws_style, editable_fields: list) -> dict:
+    if ws_data is None:
+        return {}
+    sn = "Output"
+    mr = max(170, _sheet_extent(ws_data)[0])
+
+    result = {}
+    for row in range(1, mr + 1):
+        key = _safe_str(_safe_value(ws_data.cell(row=row, column=1)))
+        value = _safe_value(ws_data.cell(row=row, column=2))
         if key:
-            result[key] = val
+            result[key] = value
+            _track_if_yellow(editable_fields, ws_style, sn, row, 2, value, key)
     return result
 
 
-def _parse_tradeline_summary(wb, editable_fields: list) -> list:
-    ws = _get_sheet(wb, "Tradeline_Summary")
-    if ws is None:
-        return []
+# ===========================================================================
+# Sheet name mapping: user-facing name -> (snake_case key, parser function)
+# ===========================================================================
 
-    headers = []
-    for col in range(1, 17):
-        h = _safe_str(_safe_value(ws.cell(row=1, column=col)))
-        headers.append(h or f"col_{col}")
+# Names to try for each sheet (first match wins)
+_SHEET_CONFIGS = [
+    # (result_key, [sheet_name_variants], parser_func)
+    ("demographic", ["Demographic"], _parse_demographic),
+    ("bureau", ["Bureau"], _parse_bureau),
+    ("banking", ["Banking"], _parse_banking),
+    ("additional_credit_checks", ["Additional Credit Checks"], _parse_additional_credit_checks),
+    ("gst", ["GST"], _parse_gst),
+    ("itr", ["ITR"], _parse_itr),
+    ("company_financials", ["Company Financials"], _parse_company_financials),
+    ("aip", ["AIP"], _parse_aip),
+    ("pd_notes", ["PD notes", "PD Notes"], _parse_pd_notes),
+    ("reference_checks", ["Reference checks", "Reference Checks"], _parse_reference_checks),
+    ("loan_purpose", ["Loan purpose", "Loan Purpose"], _parse_loan_purpose),
+    ("stock_details", ["Stock Details"], _parse_stock_details),
+    ("plant_machinery_details", ["Plant & Machinery Details", "Plant and Machinery Details", "Plant & Machinery"], _parse_plant_machinery),
+    ("property_details", ["Property Details"], _parse_property_details),
+    ("scorecard", ["Scorecard"], _parse_scorecard),
+    ("deviations_credit", ["Deviations_Credit", "Deviations Credit"], _parse_deviations_credit),
+    ("interest_rate_calculator", ["Interest Rate Calculator"], _parse_interest_rate),
+    ("eligibility_inventory", ["Eligibility - Inventory", "Eligibility_Inventory", "Eligibility Inventory"], _parse_eligibility_inventory),
+    ("eligibility_property", ["Eligibility - Property", "Eligibility_Property", "Eligibility Property"], _parse_eligibility_property),
+    ("sanction_conditions", ["Sanction Conditions"], _parse_sanction_conditions),
+    ("psl", ["PSL"], _parse_psl),
+    ("cgtmse_calculator", ["CGTMSE Calculator", "CGTMSE"], _parse_cgtmse),
+    ("charges", ["Charges"], _parse_charges),
+    ("disbursement", ["Disbursement"], _parse_disbursement),
+    ("additional_information", ["Additional Information"], _parse_additional_information),
+]
 
-    items = []
-    for row in range(2, 28):
-        row_data = {}
-        has_data = False
-        for col in range(1, 17):
-            val = _safe_value(ws.cell(row=row, column=col))
-            if val is not None:
-                row_data[headers[col - 1]] = val
-                has_data = True
-        if has_data:
-            items.append(row_data)
-    return items
 
-
-def _parse_applicant_summary(wb, editable_fields: list) -> list:
-    ws = _get_sheet(wb, "Applicant_Summary")
-    if ws is None:
-        return []
-
-    headers = []
-    for col in range(1, 15):
-        h = _safe_str(_safe_value(ws.cell(row=1, column=col)))
-        headers.append(h or f"col_{col}")
-
-    items = []
-    for row in range(2, 5):
-        row_data = {}
-        has_data = False
-        for col in range(1, 15):
-            val = _safe_value(ws.cell(row=row, column=col))
-            if val is not None:
-                row_data[headers[col - 1]] = val
-                has_data = True
-        if has_data:
-            items.append(row_data)
-    return items
-
+# ===========================================================================
+# Main entry point
+# ===========================================================================
 
 def parse_cam_xlsm(content: bytes, filename: str) -> dict:
     """
-    Parse a .xlsm CAM Excel file and extract structured data from all sheets.
+    Parse a .xlsm CAM Excel file and extract structured data from all 25
+    user-facing sheets plus the Output sheet.
 
     Args:
         content: Raw bytes of the .xlsm file.
         filename: Original filename (for logging).
 
     Returns:
-        dict with structured data from all sheets plus editable field tracking.
+        dict with a top-level key per sheet (snake_case), plus ``editable_fields``
+        list and ``output`` dict.
     """
     logger.info("Parsing CAM XLSM file: %s (%d bytes)", filename, len(content))
 
-    # Load workbook: data_only=True for computed values, keep_vba=True for .xlsm
-    # Note: We load twice — once with data_only for values, once without for colors.
-    # openpyxl with data_only=True loses style info in some versions, so we use
-    # the non-data_only workbook for color detection.
+    # Load workbook twice:
+    #   wb_data  – data_only=True  → computed values (no formulas)
+    #   wb_style – data_only=False → cell styles / colors
     try:
         wb_data = openpyxl.load_workbook(
-            io.BytesIO(content), data_only=True, keep_vba=True, read_only=False
+            io.BytesIO(content), data_only=True, keep_vba=True, read_only=False,
         )
     except Exception as e:
         logger.error("Failed to load workbook (data_only): %s", e)
@@ -794,7 +1257,7 @@ def parse_cam_xlsm(content: bytes, filename: str) -> dict:
 
     try:
         wb_style = openpyxl.load_workbook(
-            io.BytesIO(content), data_only=False, keep_vba=True, read_only=False
+            io.BytesIO(content), data_only=False, keep_vba=True, read_only=False,
         )
     except Exception:
         logger.warning("Could not load style workbook; editable field detection may be limited")
@@ -803,53 +1266,33 @@ def parse_cam_xlsm(content: bytes, filename: str) -> dict:
     logger.info("Sheets found: %s", wb_data.sheetnames)
 
     editable_fields: list[dict] = []
+    result: dict[str, Any] = {}
 
-    # For color detection, we use wb_style. For values, wb_data.
-    # We'll pass wb_style to the editable tracker and wb_data to value extractors.
-    # To keep things simpler, we use wb_style for parsing (which has formulas not values)
-    # only for color, and wb_data for actual value extraction.
+    # Parse each of the 25 user-facing sheets
+    for key, name_variants, parser_fn in _SHEET_CONFIGS:
+        ws_data = None
+        ws_style_sheet = None
+        for name in name_variants:
+            ws_data = _get_sheet(wb_data, name)
+            ws_style_sheet = _get_sheet(wb_style, name)
+            if ws_data is not None:
+                break
 
-    # Build result
-    result = {
-        "application": _parse_processed_data_basic(wb_data, editable_fields),
-        "output": _parse_output(wb_data, editable_fields),
-        "demographic": _parse_demographic(wb_data, editable_fields),
-        "bureau": _parse_bureau(wb_data, editable_fields),
-        "banking": _parse_banking(wb_data, editable_fields),
-        "gst": _parse_gst(wb_data, editable_fields),
-        "financials": _parse_company_financials(wb_data, editable_fields),
-        "aip": _parse_aip(wb_data, editable_fields),
-        "pd_notes": _parse_pd_notes(wb_data, editable_fields),
-        "stock_details": _parse_stock_details(wb_data, editable_fields),
-        "scorecard": _parse_scorecard(wb_data, editable_fields),
-        "deviations": _parse_deviations(wb_data, editable_fields),
-        "interest_rate": _parse_interest_rate(wb_data, editable_fields),
-        "eligibility": _parse_eligibility(wb_data, editable_fields),
-        "loan_final": _parse_loan_final(wb_data, editable_fields),
-        "sanction_conditions": _parse_kv_sheet(wb_data, "Sanction Conditions", 20, editable_fields),
-        "loan_purpose": _parse_kv_sheet(wb_data, "Loan Purpose", 20, editable_fields),
-        "reference_checks": _parse_kv_sheet(wb_data, "Reference Checks", 20, editable_fields),
-        "risk_band": _parse_risk_band(wb_data, editable_fields),
-        "tradeline_summary": _parse_tradeline_summary(wb_data, editable_fields),
-        "applicant_summary": _parse_applicant_summary(wb_data, editable_fields),
-    }
+        if ws_data is None:
+            logger.warning("Sheet not found for key '%s' (tried: %s)", key, name_variants)
 
-    # Now re-scan editable fields using the style workbook for accurate color detection
-    editable_fields_final: list[dict] = []
-    for ef in editable_fields:
-        sheet_name = ef["sheet"]
-        cell_ref = ef["cell"]
-        ws_style = _get_sheet(wb_style, sheet_name)
-        if ws_style is None:
-            continue
         try:
-            cell = ws_style[cell_ref]
-            if _is_yellow(cell):
-                editable_fields_final.append(ef)
+            result[key] = parser_fn(ws_data, ws_style_sheet, editable_fields)
         except Exception:
-            pass
+            logger.exception("Error parsing sheet '%s'", key)
+            result[key] = {}
 
-    result["editable_fields"] = editable_fields_final
+    # Output sheet (special: 160 key-value pairs)
+    ws_out_data = _get_sheet(wb_data, "Output")
+    ws_out_style = _get_sheet(wb_style, "Output")
+    result["output"] = _parse_output(ws_out_data, ws_out_style, editable_fields)
+
+    result["editable_fields"] = editable_fields
 
     # Cleanup
     try:
@@ -860,15 +1303,11 @@ def parse_cam_xlsm(content: bytes, filename: str) -> dict:
         pass
 
     logger.info(
-        "Parsed %s: %d output keys, %d bureau scores, %d existing loans, "
-        "%d editable fields, %d tradelines, %d applicants",
+        "Parsed %s: %d sheets extracted, %d output keys, %d editable fields",
         filename,
+        sum(1 for k, v in result.items() if k not in ("editable_fields", "output") and v),
         len(result.get("output", {})),
-        len(result.get("bureau", {}).get("scores", [])),
-        len(result.get("bureau", {}).get("existing_loans", [])),
-        len(editable_fields_final),
-        len(result.get("tradeline_summary", [])),
-        len(result.get("applicant_summary", [])),
+        len(editable_fields),
     )
 
     return result
