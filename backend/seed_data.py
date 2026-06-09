@@ -162,15 +162,21 @@ async def seed():
                 print(f"  ⏭ Case already exists: {existing.case_ref}")
                 continue
 
+            # Ensure string fields
+            def _str(v):
+                if v is None or v == 0 or v == "0":
+                    return None
+                return str(v)
+
             # Create case
             case = Case(
                 id=str(uuid.uuid4()),
                 case_ref=f"SLICE-{app_id}",
-                borrower_name=borrower_name,
-                borrower_pan=app_info.get("pan"),
-                borrower_gstin=app_info.get("gstin"),
-                borrower_entity_type=app_info.get("constitution"),
-                industry=app_info.get("nature_of_business") or output.get("Nature_of_business"),
+                borrower_name=borrower_name or "Unknown",
+                borrower_pan=_str(app_info.get("pan")),
+                borrower_gstin=_str(app_info.get("gstin")),
+                borrower_entity_type=_str(app_info.get("constitution")),
+                industry=_str(app_info.get("nature_of_business") or output.get("Nature_of_business")),
                 loan_amount_requested=loan_amount,
                 loan_type=output.get("requested_loan_type") or "term_loan",
                 loan_purpose=output.get("Nature_of_business"),
