@@ -355,13 +355,69 @@ bulletList(s10, demoSteps, 2.0, 2.7, 6, 2.5, { fontSize: 13, color: C.ice });
 s10.addText("10", { x: 9.3, y: 5.25, w: 0.5, h: 0.3, fontSize: 9, color: C.gray500, align: "right", fontFace: "Calibri", margin: 0 });
 
 // ══════════════════════════════════════════════════════════════════
-// SLIDE 11 — BUSINESS IMPACT
+// SLIDE 11 — FRAUD DETECTION PORTAL
+// ══════════════════════════════════════════════════════════════════
+let sF1 = pres.addSlide();
+lightSlide(sF1);
+slideTitle(sF1, "Fraud Detection: Built Into the Pipeline");
+slideSubtitle(sF1, "Automated checks that are impossible to skip — applied consistently on every application");
+pageNum(sF1, "11");
+
+const fraudChecks = [
+  { icon: "🔍", title: "Bank Statement Tampering", desc: "Balance reconciliation gate detects modified transactions — if balanceₙ ≠ balanceₙ₋₁ ± amount, flag it. Font/pixel analysis for PDF manipulation.", color: C.red, bg: C.redBg },
+  { icon: "🆔", title: "Identity Fraud Detection", desc: "PAN/mobile dedupe across applicant & co-applicant. Cross-check PAN embedded in GSTIN. Name match between bank statement holder and applicant.", color: C.yellow, bg: C.yellowBg },
+  { icon: "📊", title: "GST Mismatch Detection", desc: "GSTIN format validation, PAN-in-GSTIN cross-check. GST turnover vs bank credits variance flagging. Filing gap detection.", color: C.accent, bg: "EBF5FF" },
+  { icon: "📋", title: "Document Completeness", desc: "Auto-checks if all required pre-PD documents are uploaded. Flags missing bank statements, GST returns, KYC, ITR before CM review starts.", color: C.green, bg: C.greenBg },
+];
+fraudChecks.forEach((f, i) => {
+  const col = i % 2;
+  const row = Math.floor(i / 2);
+  const x = 0.7 + col * 4.5;
+  const y = 1.55 + row * 1.8;
+  cardBox(sF1, x, y, 4.2, 1.55, f.bg);
+  sF1.addShape(pres.shapes.RECTANGLE, { x, y, w: 0.08, h: 1.55, fill: { color: f.color } });
+  sF1.addText(f.icon + "  " + f.title, { x: x + 0.25, y: y + 0.1, w: 3.8, h: 0.3, fontSize: 13, fontFace: "Arial", color: C.gray900, bold: true, margin: 0 });
+  sF1.addText(f.desc, { x: x + 0.25, y: y + 0.5, w: 3.8, h: 0.9, fontSize: 10, fontFace: "Calibri", color: C.gray700, margin: 0, lineSpacingMultiple: 1.3 });
+});
+
+// ══════════════════════════════════════════════════════════════════
+// SLIDE 12 — FRAUD PORTAL IN ACTION
+// ══════════════════════════════════════════════════════════════════
+let sF2 = pres.addSlide();
+darkSlide(sF2);
+slideTitle(sF2, "Fraud Portal: Attention Panel", { dark: true });
+slideSubtitle(sF2, "Every exception surfaces as a finding — severity-ranked, evidence-linked, auditable", { dark: true });
+pageNum(sF2, "12");
+
+// Severity cards
+const severities = [
+  { level: "HIGH", color: C.red, bg: "3D1010", examples: "Tampered bank statement\nPAN dedupe clash\nGSTIN-PAN mismatch" },
+  { level: "MEDIUM", color: C.yellow, bg: "3D3306", examples: "Name mismatch on bank stmt\nMobile dedupe clash\nGSTIN format invalid" },
+  { level: "LOW", color: C.accent, bg: "0F1A3D", examples: "Minor GST variance\nDocument completeness gap\nFiling frequency irregular" },
+];
+severities.forEach((s, i) => {
+  const x = 0.8 + i * 3.1;
+  cardBox(sF2, x, 1.6, 2.8, 2.2, s.bg);
+  sF2.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: x + 0.1, y: 1.72, w: 0.7, h: 0.3, fill: { color: s.color }, rectRadius: 0.05 });
+  sF2.addText(s.level, { x: x + 0.1, y: 1.72, w: 0.7, h: 0.3, fontSize: 9, fontFace: "Arial", color: C.white, bold: true, align: "center", valign: "middle", margin: 0 });
+  sF2.addText(s.examples, { x: x + 0.15, y: 2.15, w: 2.5, h: 1.4, fontSize: 10, fontFace: "Calibri", color: C.ice, margin: 0, lineSpacingMultiple: 1.4 });
+});
+
+// Finding format
+cardBox(sF2, 0.8, 4.1, 8.4, 1.0, "1A2040");
+sF2.addText("Each finding is structured:", { x: 1.0, y: 4.18, w: 3, h: 0.25, fontSize: 11, fontFace: "Arial", color: C.accent, bold: true, margin: 0 });
+sF2.addText('{ "doc": "bank_statement.pdf", "type": "tampered_total", "severity": "high", "evidence": "Font mismatch on total row", "confidence": 0.81 }', {
+  x: 1.0, y: 4.5, w: 8.0, h: 0.45, fontSize: 9, fontFace: "Consolas", color: C.ice, margin: 0,
+});
+
+// ══════════════════════════════════════════════════════════════════
+// SLIDE 13 — BUSINESS IMPACT (was 11)
 // ══════════════════════════════════════════════════════════════════
 let s11 = pres.addSlide();
 lightSlide(s11);
 slideTitle(s11, "Business Impact");
 slideSubtitle(s11, "Primary lever: underwriter bandwidth → operations cost");
-pageNum(s11, "11");
+pageNum(s11, "13");
 
 const impacts = [
   { stat: "1-2 hrs", label: "saved per unparseable statement", sub: "~20% of all cases" },
@@ -390,12 +446,12 @@ bulletList(s11, [
 let s12 = pres.addSlide();
 lightSlide(s12);
 slideTitle(s12, "Roadmap & Ask");
-pageNum(s12, "12");
+pageNum(s12, "14");
 
 const roadmap = [
   { phase: "P1", title: "Portal replacing CAM", desc: "Browse, upload, edit, export — full underwriter workflow", color: C.accent },
-  { phase: "P2", title: "Extend learning loop", desc: "Promote LLM-text formats into learned recipes for non-tabular statements", color: C.green },
-  { phase: "P3", title: "Beyond bank statements", desc: "Extend parsing + learning to GST, ITR, KYC documents", color: C.yellow },
+  { phase: "P2", title: "Fraud detection v2", desc: "ML-based tamper detection, cross-document anomaly scoring, real-time fraud alerts", color: C.red },
+  { phase: "P3", title: "Extend learning loop", desc: "Promote LLM-text formats into learned recipes; extend to GST/ITR/KYC", color: C.green },
   { phase: "P4", title: "CE password affordance", desc: "CE-supplied passwords for PDFs no identity-derived candidate unlocks", color: C.gray500 },
 ];
 roadmap.forEach((r, i) => {
@@ -418,13 +474,14 @@ s12.addText("Ask: Pilot on a live queue to quantify hours saved", {
 let s13 = pres.addSlide();
 darkSlide(s13);
 slideTitle(s13, "Tech Stack", { dark: true });
-s13.addText("13", { x: 9.3, y: 5.25, w: 0.5, h: 0.3, fontSize: 9, color: C.gray500, align: "right", fontFace: "Calibri", margin: 0 });
+s13.addText("15", { x: 9.3, y: 5.25, w: 0.5, h: 0.3, fontSize: 9, color: C.gray500, align: "right", fontFace: "Calibri", margin: 0 });
 
 const stacks = [
   { cat: "Backend", items: "Python · FastAPI · pdfplumber · openpyxl · Azure OpenAI (GPT-4o) · pandas" },
   { cat: "Frontend", items: "React · TypeScript · Tailwind CSS · Recharts · Vite" },
   { cat: "Infrastructure", items: "Docker (Rancher Desktop) · PostgreSQL · Redis" },
-  { cat: "Portal", items: "22-tab CAM view · 25-sheet parser · ~2,000 editable fields/CAM · 11 test cases" },
+  { cat: "Fraud Engine", items: "Balance reconciliation · PAN/GSTIN cross-check · Name match · Document completeness" },
+  { cat: "Portal", items: "22-tab CAM view · 25-sheet parser · ~2,000 editable fields/CAM · Fraud attention panel" },
 ];
 stacks.forEach((st, i) => {
   const y = 1.3 + i * 1.0;
