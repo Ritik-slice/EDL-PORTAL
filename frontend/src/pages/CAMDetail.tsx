@@ -306,8 +306,15 @@ export default function CAMDetail() {
     }
   };
 
-  const applicantName = d.demographic?.applicant_name ?? out.applicant_name ?? "—";
-  const businessName = d.demographic?.business_name ?? out.business_name ?? "";
+  // Get names from application (built by parser from demographic data)
+  const appInfo = d.application ?? {};
+  const applicantName = appInfo.applicant_name
+    ?? d.demographic?.["Co-Borrower"]?.["Co-Borrower Name"]
+    ?? d.demographic?.["Co Borrower"]?.["Co-Borrower Name"]
+    ?? "—";
+  const businessName = appInfo.business_name
+    ?? d.demographic?.["Business"]?.["Business Name"]
+    ?? "";
 
   return (
     <div className="max-w-[1440px] mx-auto px-6 py-5">
@@ -446,66 +453,57 @@ function OverviewTab({ d, out, bureauScore }: { d: any; out: any; bureauScore: a
 /* ─── 2. Demographic ─── */
 function DemographicTab({ d, out, onCellSave }: { d: any; out: any; onCellSave: any }) {
   const demo = d.demographic ?? {};
-  const hasRawGrid = demo._raw_grid?.headers?.length > 0;
+  const app = d.application ?? {};
+  // The parser stores demographic as nested dicts keyed by section name
+  const sourcing = demo["Sourcing Details"] ?? {};
+  const loanApp = demo["Loan Application Details"] ?? {};
+  const biz = demo["Business"] ?? demo["Business Details"] ?? {};
+  const coBorrower = demo["Co-Borrower"] ?? demo["Co Borrower"] ?? {};
+  const coApp = demo["Co-Applicant Details"] ?? {};
 
   return (
     <>
-      <SheetSection title="Loan Application Details" sheetData={demo} onCellSave={onCellSave}>
+      <SheetSection title="Demographic Details" sheetData={demo} onCellSave={onCellSave}>
+        {/* Sourcing */}
+        <Section title="Sourcing & Loan Application" className="mb-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6">
+            <KV label="Branch" value={sourcing["Branch Name"] ?? app.branch} />
+            <KV label="State" value={sourcing["State Name"]} />
+            <KV label="Application No" value={loanApp["Application number"] ?? app.app_id} mono />
+            <KV label="Collateral Type" value={loanApp["Collateral Type"]} />
+            <KV label="Loan Type" value={loanApp["Requested Loan Type"] ?? out.requested_loan_type} />
+            <KV label="Loan Amount" value={fmt(loanApp["Requested Loan Amount"] ?? out.requested_loan_amount)} />
+          </div>
+        </Section>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <Section title="Applicant Details">
-            <KV label="Name" value={demo.applicant_name ?? out.applicant_name} />
-            <KV label="Age" value={demo.age ?? out.age} />
-            <KV label="Date of Birth" value={demo.dob} />
-            <KV label="Mobile" value={demo.mobile} mono />
-            <KV label="Email" value={demo.email} />
-            <KV label="Occupation" value={demo.occupation} />
-            <KV label="Current Address" value={demo.current_address} />
-            <KV label="Permanent Address" value={demo.permanent_address} />
-          </Section>
+          {/* Business */}
           <Section title="Business Details">
-            <KV label="Business Name" value={demo.business_name ?? out.business_name} />
-            <KV label="Constitution" value={demo.constitution ?? out.business_constitution} />
-            <KV label="Nature of Business" value={demo.nature_of_business ?? out.Nature_of_business} />
-            <KV label="Business Type" value={demo.business_type ?? out.business_type} />
-            <KV label="Enterprise Type" value={demo.enterprise_type} />
-            <KV label="PAN" value={demo.pan} mono />
-            <KV label="PAN Status" value={demo.pan_status} />
-            <KV label="GSTIN" value={demo.gstin} mono />
-            <KV label="Udyam Number" value={demo.udyam_number} mono />
-            <KV label="Business Address" value={typeof demo.business_address === "object" ? JSON.stringify(demo.business_address) : demo.business_address} />
+            {Object.entries(biz).filter(([k]) => !k.startsWith("_")).map(([k, v]) => (
+              <KV key={k} label={k} value={typeof v === "object" ? JSON.stringify(v) : v} mono={k.includes("PAN") || k.includes("GST") || k.includes("Udyam")} />
+            ))}
+            {Object.keys(biz).length === 0 && <p className="text-xs text-gray-400">No business data</p>}
+          </Section>
+
+          {/* Co-Borrower (Applicant) */}
+          <Section title="Co-Borrower (Applicant)">
+            {Object.entries(coBorrower).filter(([k]) => !k.startsWith("_")).map(([k, v]) => (
+              <KV key={k} label={k} value={v} mono={k.includes("PAN") || k.includes("Mobile")} />
+            ))}
+            {Object.keys(coBorrower).length === 0 && <p className="text-xs text-gray-400">No co-borrower data</p>}
           </Section>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
-          <Section title="Co-Borrower">
-            <KV label="Name" value={demo.co_borrower_name} />
-            <KV label="Relationship" value={demo.co_borrower_relationship ?? out["co-borrower_relationship"]} />
-            <KV label="Age" value={demo.co_borrower_age} />
-            <KV label="PAN" value={demo.co_borrower_pan} mono />
-            <KV label="Occupation" value={demo.co_borrower_occupation} />
+
+        {/* Co-Applicants */}
+        {Object.entries(coApp).filter(([_, v]) => v && typeof v !== "object" || (typeof v === "object" && Object.values(v as any).some(Boolean))).length > 0 && (
+          <Section title="Co-Applicant Details" className="mt-5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6">
+              {Object.entries(coApp).filter(([k]) => !k.startsWith("_")).map(([k, v]) => (
+                <KV key={k} label={k} value={v} mono={k.includes("PAN") || k.includes("Mobile")} />
+              ))}
+            </div>
           </Section>
-          <Section title="Co-Applicant">
-            <KV label="Name" value={demo.co_applicant_name} />
-            <KV label="Relationship" value={demo.co_applicant_relationship ?? out["co-applicant_relationship"]} />
-            <KV label="Age" value={demo.co_applicant_age} />
-            <KV label="PAN" value={demo.co_applicant_pan} mono />
-            <KV label="Occupation" value={demo.co_applicant_occupation} />
-          </Section>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
-          <Section title="Loan Request">
-            <KV label="Requested Amount" value={fmt(out.requested_loan_amount ?? demo.requested_amount)} />
-            <KV label="Loan Type" value={out.requested_loan_type ?? demo.loan_type} />
-            <KV label="Loan Purpose" value={demo.loan_purpose} />
-            <KV label="Primary Security" value={demo.primary_security} />
-            <KV label="Secondary Security" value={demo.secondary_security} />
-          </Section>
-          <Section title="Branch & Application">
-            <KV label="Branch" value={demo.branch ?? out.sourcing_branch} />
-            <KV label="Application ID" value={demo.app_id} mono />
-            <KV label="Applied Date" value={demo.applied_date} />
-            <KV label="CAM ID" value={demo.cam_id} mono />
-          </Section>
-        </div>
+        )}
       </SheetSection>
     </>
   );

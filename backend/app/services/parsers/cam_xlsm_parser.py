@@ -1294,6 +1294,46 @@ def parse_cam_xlsm(content: bytes, filename: str) -> dict:
 
     result["editable_fields"] = editable_fields
 
+    # Build `application` convenience dict from demographic + output
+    demo = result.get("demographic", {})
+    out = result.get("output", {})
+    biz = demo.get("Business", demo.get("Business Details", {}))
+    coborrower = demo.get("Co-Borrower", demo.get("Co Borrower", {}))
+    loan_app = demo.get("Loan Application Details", {})
+    sourcing = demo.get("Sourcing Details", {})
+    coapp = demo.get("Co-Applicant Details", {})
+    if isinstance(biz, dict) and isinstance(coborrower, dict):
+        result["application"] = {
+            "applicant_name": coborrower.get("Co-Borrower Name") or coborrower.get("Name") or coborrower.get("Co Borrower Name"),
+            "mobile": coborrower.get("Mobile/Phone No"),
+            "email": coborrower.get("Email ID"),
+            "dob": coborrower.get("Date of Birth"),
+            "age": coborrower.get("Age (years)"),
+            "pan": coborrower.get("PAN No") or biz.get("PAN No"),
+            "pan_status": biz.get("PAN Status"),
+            "occupation": coborrower.get("Occupation"),
+            "current_address": coborrower.get("Current Address") or coborrower.get("Aadhar Address"),
+            "fathers_name": coborrower.get("Father's Name"),
+            "business_name": biz.get("Business Name"),
+            "constitution": biz.get("Constitution"),
+            "nature_of_business": biz.get("Nature of Business") or out.get("Nature_of_business"),
+            "business_type": biz.get("Business Type") or out.get("business_type"),
+            "enterprise_type": biz.get("Enterprise Type"),
+            "gstin": biz.get("GST No"),
+            "udyam_number": biz.get("Udyam No"),
+            "business_address": biz.get("Principal place of business / Registered"),
+            "loan_amount": loan_app.get("Requested Loan Amount") or out.get("requested_loan_amount"),
+            "loan_type": loan_app.get("Requested Loan Type") or out.get("requested_loan_type"),
+            "app_id": loan_app.get("Application number"),
+            "branch": sourcing.get("Branch Name"),
+            "cam_id": None,
+            "applied_date": None,
+            "primary_security": biz.get("Primary Security") or out.get("Collateral Type"),
+            "secondary_security": biz.get("Secondary Security"),
+        }
+    else:
+        result["application"] = {}
+
     # Cleanup
     try:
         wb_data.close()
