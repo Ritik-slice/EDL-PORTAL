@@ -376,46 +376,53 @@ def _parse_gst(wb, editable_fields: list) -> dict:
     if ws is None:
         return {"auto_pull": {}, "manual_pull": {}, "monthly_filings": []}
 
-    # Auto pull: cols B-D
+    # Auto pull: B=label, C=value (rows 3-6 for header, 10-21 for monthly: B=Month, C=FY, D=Amount)
     auto_pull = {}
-    for row in range(2, 71):
+    for row in [3, 4, 5, 6]:
         key = _safe_str(_safe_value(ws.cell(row=row, column=2)))
         val = _safe_value(ws.cell(row=row, column=3))
-        if key:
+        if key and val:
             auto_pull[key] = val
 
-    # Manual pull: cols H-J
+    # Manual pull: H=label, I=value (rows 3-6 for header info, YELLOW editable)
     manual_pull = {}
-    for row in range(2, 71):
-        key = _safe_str(_safe_value(ws.cell(row=row, column=8)))
+    field_map = {3: "gstin", 4: "status", 5: "latest_month", 6: "frequency"}
+    for row, field_name in field_map.items():
+        label = _safe_str(_safe_value(ws.cell(row=row, column=8)))
         val = _safe_value(ws.cell(row=row, column=9))
-        if key:
-            manual_pull[key] = val
-            _track_editable(editable_fields, ws, "GST", row, 9, key)
+        if val is not None:
+            manual_pull[field_name] = val
+            _track_editable(editable_fields, ws, "GST", row, 9, f"gst_{field_name}")
+        elif label:
+            manual_pull[field_name] = None
 
-    # Monthly filings
+    # Monthly filings — Auto pull (B=Month, C=FY, D=Amount, rows 10-21)
     monthly_filings = []
-    for row in range(2, 71):
-        month = _safe_value(ws.cell(row=row, column=4))
-        if month is None:
-            continue
-        entry = {
-            "month": month,
-            "fy": _safe_value(ws.cell(row=row, column=5)),
-            "amount": _safe_value(ws.cell(row=row, column=6)),
-        }
-        monthly_filings.append(entry)
-        # Manual pull monthly filings
-        m_month = _safe_value(ws.cell(row=row, column=10))
-        if m_month is not None:
+    for row in range(10, 22):
+        month = _safe_value(ws.cell(row=row, column=2))
+        amount = _safe_value(ws.cell(row=row, column=4))
+        if month is not None and str(month).strip() not in ("", "Total", "00:00:00"):
             monthly_filings.append({
-                "month": m_month,
-                "fy": _safe_value(ws.cell(row=row, column=11)),
-                "amount": _safe_value(ws.cell(row=row, column=12)) if ws.cell(row=row, column=12).value else None,
-                "source": "manual",
+                "month": month,
+                "fy": _safe_value(ws.cell(row=row, column=3)),
+                "amount": amount,
+                "source": "auto",
             })
-            for c in [10, 11, 12]:
-                _track_editable(editable_fields, ws, "GST", row, c, f"manual_filing_r{row}")
+
+    # Monthly filings — Manual pull (H=Month, I=FY, J=Amount, rows 10-21, YELLOW)
+    for row in range(10, 22):
+        month = _safe_value(ws.cell(row=row, column=8))
+        amount = _safe_value(ws.cell(row=row, column=10))
+        if month is not None and str(month).strip() not in ("", "Total", "00:00:00"):
+            monthly_filings.append({
+                "month": month,
+                "fy": _safe_value(ws.cell(row=row, column=9)),
+                "amount": amount,
+                "source": "manual",
+                "editable": True,
+            })
+            for c in [8, 9, 10]:
+                _track_editable(editable_fields, ws, "GST", row, c, f"gst_manual_r{row}")
 
     return {
         "auto_pull": auto_pull,
@@ -524,10 +531,13 @@ def _parse_stock_details(wb, editable_fields: list) -> list:
         return []
 
     items = []
-    for row in range(3, 24):
+    for row in range(3, 23):  # Stop before row 23 which is "Total"
         sl_no = _safe_value(ws.cell(row=row, column=1))
         desc = _safe_value(ws.cell(row=row, column=2))
+        # Skip empty rows and the "Total" summary row
         if sl_no is None and desc is None:
+            continue
+        if str(sl_no).strip().lower() == "total":
             continue
         item = {
             "sl_no": sl_no,
@@ -535,6 +545,7 @@ def _parse_stock_details(wb, editable_fields: list) -> list:
             "quantity": _safe_value(ws.cell(row=row, column=3)),
             "rate": _safe_value(ws.cell(row=row, column=4)),
             "amount": _safe_value(ws.cell(row=row, column=5)),
+            "editable": True,  # Stock items are yellow/editable
         }
         items.append(item)
         for col in range(1, 6):

@@ -390,25 +390,34 @@ function IncomeTab({ d, out, onFieldSave, onCellSave }: { d: any; out: any; onFi
 function GSTTab({ d, out }: { d: any; out: any }) {
   const gst = d.gst ?? {};
   const manual = gst.manual_pull ?? {};
-  const filings = gst.monthly_filings ?? [];
+  // Filter out bad rows (header rows, "Amount (Rs)", "0", "00:00:00")
+  const filings = (gst.monthly_filings ?? []).filter((f: any) => {
+    const m = String(f.month ?? "").trim();
+    return m && !m.includes("Amount") && m !== "0" && m !== "00:00:00" && m !== "Total";
+  });
   const filingCols: Column[] = [
     { key: "month", header: "Month" },
     { key: "fy", header: "FY" },
-    { key: "amount", header: "Amount", align: "right", format: fmt },
+    { key: "amount", header: "Amount (₹)", align: "right", format: fmt, editable: true, type: "number" },
+    { key: "source", header: "Source", render: (r: any) => r.source === "manual" ? <span className="text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">Manual</span> : <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">Auto</span> },
   ];
 
   return (
     <>
       <Section title="GST Details">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <KV label="GSTIN" value={manual.gstin ?? d.application?.gstin} />
-          <KV label="Status" value={manual.status ?? out.GST_status} />
-          <KV label="Latest Month" value={manual.latest_month ?? out.latest_gst_filed_month} />
-          <KV label="Frequency" value={manual.frequency ?? out.gst_filing_frequency} />
-          <KV label="Annual Turnover" value={out.Annual_gst_turnover} />
-          <KV label="Eligibility (GST)" value={fmt(out.Eligibility_as_per_GST_Return)} />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3"><p className="text-[10px] text-yellow-600 uppercase font-semibold">GSTIN</p><p className="text-sm font-bold text-gray-900">{manual.gstin ?? d.application?.gstin ?? "—"}</p></div>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3"><p className="text-[10px] text-yellow-600 uppercase font-semibold">Status</p><p className="text-sm font-bold text-gray-900">{manual.status ?? out.GST_status ?? "—"}</p></div>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3"><p className="text-[10px] text-yellow-600 uppercase font-semibold">Latest Month</p><p className="text-sm font-bold text-gray-900">{manual.latest_month ?? out.latest_gst_filed_month ?? "—"}</p></div>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3"><p className="text-[10px] text-yellow-600 uppercase font-semibold">Frequency</p><p className="text-sm font-bold text-gray-900">{manual.frequency ?? out.gst_filing_frequency ?? "—"}</p></div>
+          <div className="border border-gray-200 rounded-lg p-3"><p className="text-[10px] text-gray-500 uppercase font-semibold">Annual Turnover</p><p className="text-sm font-bold text-gray-900">{out.Annual_gst_turnover ?? "—"}</p></div>
+          <div className="border border-gray-200 rounded-lg p-3"><p className="text-[10px] text-gray-500 uppercase font-semibold">Eligibility (GST)</p><p className="text-sm font-bold text-gray-900">{fmt(out.Eligibility_as_per_GST_Return)}</p></div>
         </div>
-        {filings.length > 0 && <DataTable columns={filingCols} data={filings} compact />}
+        {filings.length > 0 ? (
+          <DataTable columns={filingCols} data={filings} compact />
+        ) : (
+          <p className="text-sm text-gray-400 italic">No GST filing data available. Upload GST returns to populate.</p>
+        )}
       </Section>
       <Section title="Company Financials">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -427,15 +436,16 @@ function GSTTab({ d, out }: { d: any; out: any }) {
 }
 
 function SecurityTab({ d, onCellSave }: { d: any; onCellSave: any }) {
-  const stock = d.stock_details ?? [];
+  // Filter out "Total" row from stock items
+  const stock = (d.stock_details ?? []).filter((s: any) => s.sl_no !== "Total" && s.description !== null);
   const out = d.output ?? {};
   const totalStock = stock.reduce((s: number, r: any) => s + (r.amount ?? 0), 0);
   const stockCols: Column[] = [
     { key: "sl_no", header: "#", width: "40px" },
     { key: "description", header: "Description", editable: true },
     { key: "quantity", header: "Qty", align: "right", editable: true, type: "number" },
-    { key: "rate", header: "Rate", align: "right", format: fmt, editable: true, type: "number" },
-    { key: "amount", header: "Amount", align: "right", format: fmt },
+    { key: "rate", header: "Rate (₹)", align: "right", format: fmt, editable: true, type: "number" },
+    { key: "amount", header: "Amount (₹)", align: "right", format: fmt },
   ];
   return (
     <>
