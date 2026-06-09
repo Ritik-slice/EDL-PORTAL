@@ -35,7 +35,10 @@ class CaseListItem(BaseModel):
     case_ref: str
     borrower_name: str
     loan_amount_requested: float
+    loan_type: Any = None
     status: Any
+    risk_signals: Optional[dict] = None
+    industry: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

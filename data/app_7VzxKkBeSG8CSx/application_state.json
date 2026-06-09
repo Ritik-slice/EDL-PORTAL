@@ -1,0 +1,1611 @@
+{
+  "applicationId": "app_7VzxKkBeSG8CSx",
+  "fields": {
+    "applicantDetails.applicantName": {
+      "value": "Aakash Bhojwani",
+      "source": "LOS",
+      "page": null,
+      "confidence": 1.0,
+      "status": "confirmed"
+    },
+    "applicantDetails.pan": {
+      "value": "CLKPB2341C",
+      "source": "LOS",
+      "page": null,
+      "confidence": 1.0,
+      "status": "confirmed"
+    },
+    "applicantDetails.dateOfBirth": {
+      "value": "13-02-1997",
+      "source": "LOS",
+      "page": null,
+      "confidence": 1.0,
+      "status": "confirmed"
+    },
+    "applicantDetails.mobileNumber": {
+      "value": 7779079709,
+      "source": "LOS",
+      "page": null,
+      "confidence": 1.0,
+      "status": "confirmed"
+    },
+    "applicantDetails.aadharAddress": {
+      "value": "KISHORBHAI,B-BLOCK-402,KRISHNA ICON,,NEAR JAIBHOLE HOMES,OPP HARI ICON,NANA CHILODA,Ahmedabad,Naroda I E,Ahmedabad,Gujarat,382330",
+      "source": "LOS",
+      "page": null,
+      "confidence": 1.0,
+      "status": "confirmed"
+    },
+    "coApplicantsData.0.name": {
+      "value": "VIJAYA KISHOR BHOJWANI",
+      "source": "LOS",
+      "page": null,
+      "confidence": 1.0,
+      "status": "confirmed"
+    },
+    "coApplicantsData.0.pan": {
+      "value": "CKWPB3610F",
+      "source": "LOS",
+      "page": null,
+      "confidence": 1.0,
+      "status": "confirmed"
+    },
+    "coApplicantsData.0.mobileNumber": {
+      "value": 9106207694,
+      "source": "LOS",
+      "page": null,
+      "confidence": 1.0,
+      "status": "confirmed"
+    },
+    "applicationDetails.loanType": {
+      "value": "EDL_STOCK",
+      "source": "LOS",
+      "page": null,
+      "confidence": 1.0,
+      "status": "confirmed"
+    },
+    "applicationDetails.loanAmount": {
+      "value": 2000000,
+      "source": "LOS",
+      "page": null,
+      "confidence": 1.0,
+      "status": "confirmed"
+    },
+    "bank.monthlyIncome": {
+      "value": 427370,
+      "source": "bank statements (parsed)",
+      "page": null,
+      "confidence": 0.9,
+      "status": "extracted"
+    },
+    "bank.existingObligation": {
+      "value": 108085,
+      "source": "bank statements (parsed)",
+      "page": null,
+      "confidence": 0.85,
+      "status": "extracted"
+    },
+    "bank.avgMonthlyBalance": {
+      "value": 21438,
+      "source": "bank statements (parsed)",
+      "page": null,
+      "confidence": 0.9,
+      "status": "extracted"
+    },
+    "gst.gstNumber": {
+      "value": "24CLKPB2341C1ZT",
+      "source": "GSTR-3B (parsed)",
+      "page": null,
+      "confidence": 0.95,
+      "status": "extracted"
+    },
+    "gst.annualTurnover": {
+      "value": 2052610,
+      "source": "12 GSTR-3B returns",
+      "page": null,
+      "confidence": 0.9,
+      "status": "extracted"
+    }
+  },
+  "fraud": [],
+  "exceptions": [
+    {
+      "code": "MISSING_KYC",
+      "severity": "medium",
+      "message": "Expected kyc document not provided",
+      "source": "check"
+    },
+    {
+      "code": "MISSING_BUREAU",
+      "severity": "medium",
+      "message": "Expected bureau document not provided",
+      "source": "check"
+    }
+  ],
+  "decision": {
+    "eligibilityAmount": 6230000.0,
+    "recommendation": "PROCEED",
+    "notes": ""
+  },
+  "bankStatements": [
+    {
+      "account": "bob-6",
+      "method": "rule",
+      "confidence": 1.0,
+      "reconciled": true,
+      "txnCount": 450,
+      "notes": "450 txns, reconciliation 100% (449/449 rule-based)"
+    },
+    {
+      "account": "bob-5",
+      "method": "rule",
+      "confidence": 1.0,
+      "reconciled": true,
+      "txnCount": 450,
+      "notes": "450 txns, reconciliation 100% (449/449 rule-based)"
+    },
+    {
+      "account": "bob-4",
+      "method": "rule",
+      "confidence": 1.0,
+      "reconciled": true,
+      "txnCount": 348,
+      "notes": "348 txns, reconciliation 100% (347/347 rule-based)"
+    },
+    {
+      "account": "bob-1",
+      "method": "rule",
+      "confidence": 0.946,
+      "reconciled": true,
+      "txnCount": 670,
+      "notes": "670 txns, reconciliation 95% (633/669 rule-based)"
+    },
+    {
+      "account": "bob-3",
+      "method": "rule+llm",
+      "confidence": 0.964,
+      "reconciled": true,
+      "txnCount": 556,
+      "notes": "556 txns, reconciliation 96% (491/556 rule-based)"
+    },
+    {
+      "account": "bob-2",
+      "method": "rule",
+      "confidence": 0.9,
+      "reconciled": true,
+      "txnCount": 543,
+      "notes": "543 txns, reconciliation 90% (488/542 rule-based)"
+    }
+  ],
+  "bankFeatures": {
+    "monthsCovered": 15,
+    "monthlyIncome": 427370,
+    "existingObligation": 108085,
+    "avgMonthlyBalance": 21438,
+    "bounceCount": 4,
+    "txnCount": 3017
+  },
+  "transactionsSample": [
+    {
+      "valueDate": "2026-01-01",
+      "narration": "UPI/014508596049/11:07:30/UPI/7621036128@ybl/Aa 2 01-01-2026 01-01-2026 s",
+      "type": "debit",
+      "amount": 2000.0,
+      "currentBalance": 9139.57
+    },
+    {
+      "valueDate": "2026-01-01",
+      "narration": "UPI/333413026569/11:12:44/UPI/paytmqr1u17aopuiu 3 01-01-2026 01-01-2026 @p",
+      "type": "debit",
+      "amount": 80.0,
+      "currentBalance": 9059.57
+    },
+    {
+      "valueDate": "2026-01-01",
+      "narration": "UPI/439219683919/16:58:51/UPI/mukeshsonkar483@ 4 01-01-2026 01-01-2026 oks",
+      "type": "debit",
+      "amount": 50.0,
+      "currentBalance": 9009.57
+    },
+    {
+      "valueDate": "2026-01-01",
+      "narration": "UPI/971928802818/19:49:28/UPI/paytm.s19sqz0@pty/ 5 01-01-2026 01-01-2026 P",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 8989.57
+    },
+    {
+      "valueDate": "2026-01-01",
+      "narration": "IMPS/P2A/600122617373/RISING 6 01-01-2026 01-01-2026 STARS/DASTIKMB917779",
+      "type": "credit",
+      "amount": 105000.0,
+      "currentBalance": 113989.57
+    },
+    {
+      "valueDate": "2026-01-01",
+      "narration": "UPI/288697816716/22:29:18/UPI/billdeskpg.sbicards 7 01-01-2026 01-01-2026",
+      "type": "debit",
+      "amount": 105000.0,
+      "currentBalance": 8989.57
+    },
+    {
+      "valueDate": "2026-01-01",
+      "narration": "IMPS/P2A/600123623712/APIPAY 8 01-01-2026 01-01-2026 FINTECH/100500000814",
+      "type": "credit",
+      "amount": 1.0,
+      "currentBalance": 8990.57
+    },
+    {
+      "valueDate": "2026-01-01",
+      "narration": "IMPS/P2A/600123029098/RAPIPAY 9 01-01-2026 01-01-2026 FINTECH/10067288835",
+      "type": "credit",
+      "amount": 14615.0,
+      "currentBalance": 23605.57
+    },
+    {
+      "valueDate": "2026-01-01",
+      "narration": "UPI/201893987757/23:46:51/UPI/9106207694@axl/Pa 10 01-01-2026 01-01-2026 ym",
+      "type": "debit",
+      "amount": 4000.0,
+      "currentBalance": 19605.57
+    },
+    {
+      "valueDate": "2026-01-02",
+      "narration": "UPI/102353050746/07:47:46/UPI/bflautopay@hdfcban 11 02-01-2026 02-01-2026 k",
+      "type": "debit",
+      "amount": 1471.0,
+      "currentBalance": 18134.57
+    },
+    {
+      "valueDate": "2026-01-02",
+      "narration": "UPI/600214865221/09:24:04/UPI/JARRETAIL@ybl/Go 12 02-01-2026 02-01-2026 ld",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 18094.57
+    },
+    {
+      "valueDate": "2026-01-02",
+      "narration": "UPI/518301630572/12:13:59/UPI/stk-9033852656- 13 02-01-2026 02-01-2026 1@ok",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 18074.57
+    },
+    {
+      "valueDate": "2026-01-02",
+      "narration": "UPI/085708613124/12:26:08/UPI/paytmqr5bkhvbuq6p 14 02-01-2026 02-01-2026 @p",
+      "type": "debit",
+      "amount": 100.0,
+      "currentBalance": 17974.57
+    },
+    {
+      "valueDate": "2026-01-02",
+      "narration": "UPI/574698151908/13:42:42/UPI/9824795531@navia 15 02-01-2026 02-01-2026 xis",
+      "type": "debit",
+      "amount": 166.0,
+      "currentBalance": 17808.57
+    },
+    {
+      "valueDate": "2026-01-02",
+      "narration": "UPI/139893461332/15:45:48/UPI/sardardiagnosticcen 16 02-01-2026 02-01-2026",
+      "type": "debit",
+      "amount": 450.0,
+      "currentBalance": 17358.57
+    },
+    {
+      "valueDate": "2026-01-02",
+      "narration": "UPI/568602194959/18:38:01/UPI/cf.rapido12@cashfre 17 02-01-2026 02-01-2026",
+      "type": "debit",
+      "amount": 29.0,
+      "currentBalance": 17329.57
+    },
+    {
+      "valueDate": "2026-01-02",
+      "narration": "UPI/360254148946/19:25:56/UPI/neeraj.vaishnav9460 18 02-01-2026 02-01-2026",
+      "type": "credit",
+      "amount": 99.0,
+      "currentBalance": 17428.57
+    },
+    {
+      "valueDate": "2026-01-02",
+      "narration": "UPI/652543736564/20:45:33/UPI/9173424466@axl/Pa 19 02-01-2026 02-01-2026 ym",
+      "type": "credit",
+      "amount": 59.0,
+      "currentBalance": 17487.57
+    },
+    {
+      "valueDate": "2026-01-02",
+      "narration": "UPI/587832714487/22:23:10/UPI/gpay- 20 02-01-2026 02-01-2026 11263593197@ok",
+      "type": "debit",
+      "amount": 80.0,
+      "currentBalance": 17407.57
+    },
+    {
+      "valueDate": "2026-01-03",
+      "narration": "IMPS/P2A/600301222312/RISING 21 03-01-2026 03-01-2026 STARS/KKBKTransferKM",
+      "type": "credit",
+      "amount": 5000.0,
+      "currentBalance": 22407.57
+    },
+    {
+      "valueDate": "2026-01-03",
+      "narration": "UPI/600359759600/03:30:57/UPI/JARRETAIL@ybl/Go 22 03-01-2026 03-01-2026 ld",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 22367.57
+    },
+    {
+      "valueDate": "2026-01-03",
+      "narration": "ACHDR/IDFC FIRST 23 03-01-2026 03-01-2026 BANK/3738073825/111172862649",
+      "type": "debit",
+      "amount": 3889.0,
+      "currentBalance": 18478.57
+    },
+    {
+      "valueDate": "2026-01-03",
+      "narration": "ACHDR/IDFC FIRST 24 03-01-2026 03-01-2026 BANK/3741973119/111173440558",
+      "type": "debit",
+      "amount": 3663.0,
+      "currentBalance": 14815.57
+    },
+    {
+      "valueDate": "2026-01-03",
+      "narration": "ACHDR/CDSGJ003290000920626/3744668963/1111 25 03-01-2026 03-01-2026 73438806",
+      "type": "debit",
+      "amount": 2928.0,
+      "currentBalance": 11887.57
+    },
+    {
+      "valueDate": "2026-01-03",
+      "narration": "IMPS/P2A/600317470221/Instantpay 26 03-01-2026 03-01-2026 Indi/PayoutIDF91",
+      "type": "credit",
+      "amount": 85800.0,
+      "currentBalance": 97687.57
+    },
+    {
+      "valueDate": "2026-01-03",
+      "narration": "UPI/452242822393/17:24:01/UPI/dkrajpal123@ibl/Pay 27 03-01-2026 03-01-2026",
+      "type": "debit",
+      "amount": 35500.0,
+      "currentBalance": 62187.57
+    },
+    {
+      "valueDate": "2026-01-03",
+      "narration": "UPI/483474068849/17:25:02/UPI/mamta.bhambhani20 28 03-01-2026 03-01-2026 @o",
+      "type": "debit",
+      "amount": 33000.0,
+      "currentBalance": 29187.57
+    },
+    {
+      "valueDate": "2026-01-03",
+      "narration": "UPI/922955012381/17:53:25/UPI/paytmqr5yuah8@pty 29 03-01-2026 03-01-2026 s/",
+      "type": "debit",
+      "amount": 850.0,
+      "currentBalance": 28337.57
+    },
+    {
+      "valueDate": "2026-01-03",
+      "narration": "UPI/636937788923/18:42:03/UPI/mihirsolanki2606-1@ 30 03-01-2026 03-01-2026",
+      "type": "credit",
+      "amount": 62.0,
+      "currentBalance": 28399.57
+    },
+    {
+      "valueDate": "2026-01-03",
+      "narration": "UPI/600392415322/20:05:59/UPI/8780966709@fam/U 31 03-01-2026 03-01-2026 PI",
+      "type": "credit",
+      "amount": 178.0,
+      "currentBalance": 28577.57
+    },
+    {
+      "valueDate": "2026-01-03",
+      "narration": "UPI/933417769950/20:06:53/UPI/cf.rapido12@cashfre 32 03-01-2026 03-01-2026",
+      "type": "debit",
+      "amount": 29.0,
+      "currentBalance": 28548.57
+    },
+    {
+      "valueDate": "2026-01-04",
+      "narration": "UPI/100011967402/00:25:53/UPI/angelmfcpupa@indu 33 04-01-2026 04-01-2026 s/",
+      "type": "debit",
+      "amount": 100.0,
+      "currentBalance": 28448.57
+    },
+    {
+      "valueDate": "2026-01-04",
+      "narration": "UPI/600481689924/02:19:23/UPI/JARRETAIL@ybl/Go 34 04-01-2026 04-01-2026 ld",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 28408.57
+    },
+    {
+      "valueDate": "2026-01-04",
+      "narration": "UPI/149829530932/11:08:17/UPI/stk-9033852656- 35 04-01-2026 04-01-2026 1@ok",
+      "type": "debit",
+      "amount": 10.0,
+      "currentBalance": 28398.57
+    },
+    {
+      "valueDate": "2026-01-04",
+      "narration": "ACHDR/SI CREVA CAPITAL 36 04-01-2026 04-01-2026 TRU/3769821758/111175007797",
+      "type": "debit",
+      "amount": 1560.0,
+      "currentBalance": 26838.57
+    },
+    {
+      "valueDate": "2026-01-04",
+      "narration": "UPI/241593067825/15:14:19/UPI/stk-9033852656- 37 04-01-2026 04-01-2026 1@ok",
+      "type": "debit",
+      "amount": 35.0,
+      "currentBalance": 26803.57
+    },
+    {
+      "valueDate": "2026-01-05",
+      "narration": "UPI/600553235977/03:33:28/UPI/JARRETAIL@ybl/Go 38 05-01-2026 05-01-2026 ld",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 26763.57
+    },
+    {
+      "valueDate": "2026-01-05",
+      "narration": "ACHDR/LM04925940/3792912549/111176853357 39 05-01-2026 05-01-2026",
+      "type": "debit",
+      "amount": 6347.0,
+      "currentBalance": 20416.57
+    },
+    {
+      "valueDate": "2026-01-05",
+      "narration": "UPI/338978951812/12:19:44/UPI/paytm.s10os6z@pty/ 40 05-01-2026 05-01-2026 P",
+      "type": "debit",
+      "amount": 24.0,
+      "currentBalance": 20392.57
+    },
+    {
+      "valueDate": "2026-01-05",
+      "narration": "UPI/644943676547/12:42:23/UPI/cf.rapido12@cashfre 41 05-01-2026 05-01-2026",
+      "type": "debit",
+      "amount": 27.0,
+      "currentBalance": 20365.57
+    },
+    {
+      "valueDate": "2026-01-05",
+      "narration": "UPI/600512257586/13:56:14/UPI/akaracapitaladvisor 42 05-01-2026 05-01-2026",
+      "type": "debit",
+      "amount": 5050.0,
+      "currentBalance": 15315.57
+    },
+    {
+      "valueDate": "2026-01-05",
+      "narration": "UPI/684986806582/16:28:01/UPI/paytm.s1nvlu6@pty/ 43 05-01-2026 05-01-2026 P",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 15295.57
+    },
+    {
+      "valueDate": "2026-01-05",
+      "narration": "UPI/004387551600/21:34:50/UPI/paytmqr5cpuwk@pty 44 05-01-2026 05-01-2026 s/",
+      "type": "debit",
+      "amount": 10.0,
+      "currentBalance": 15285.57
+    },
+    {
+      "valueDate": "2026-01-05",
+      "narration": "UPI/108920130874/21:42:16/UPI/adityabirlafinancel 45 05-01-2026 05-01-2026",
+      "type": "debit",
+      "amount": 4496.0,
+      "currentBalance": 10789.57
+    },
+    {
+      "valueDate": "2026-01-06",
+      "narration": "UPI/600630626555/01:47:42/UPI/JARRETAIL@ybl/Go 46 06-01-2026 06-01-2026 ld",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 10749.57
+    },
+    {
+      "valueDate": "2026-01-06",
+      "narration": "UPI/207972059267/12:25:51/UPI/stk-9033852656- 47 06-01-2026 06-01-2026 1@ok",
+      "type": "debit",
+      "amount": 30.0,
+      "currentBalance": 10719.57
+    },
+    {
+      "valueDate": "2026-01-06",
+      "narration": "UPI/756395334540/15:31:06/UPI/paytmqr6qal0h@pty 48 06-01-2026 06-01-2026 s/",
+      "type": "debit",
+      "amount": 30.0,
+      "currentBalance": 10689.57
+    },
+    {
+      "valueDate": "2026-01-06",
+      "narration": "UPI/805513539305/22:15:39/UPI/paytm.s1uw1x7@pty 49 06-01-2026 06-01-2026 /P",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 10669.57
+    },
+    {
+      "valueDate": "2026-01-06",
+      "narration": "UPI/422514293643/22:18:14/UPI/paytm.s1x3avk@pty/ 50 06-01-2026 06-01-2026 P",
+      "type": "debit",
+      "amount": 10.0,
+      "currentBalance": 10659.57
+    },
+    {
+      "valueDate": "2026-01-06",
+      "narration": "UPI/030200524228/22:53:25/UPI/Q402468057@ybl/P 51 06-01-2026 06-01-2026 aym",
+      "type": "debit",
+      "amount": 70.0,
+      "currentBalance": 10589.57
+    },
+    {
+      "valueDate": "2026-01-07",
+      "narration": "UPI/600700824033/07:31:22/UPI/JARRETAIL@ybl/Go 52 07-01-2026 07-01-2026 ld",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 10549.57
+    },
+    {
+      "valueDate": "2026-01-07",
+      "narration": "UPI/640234127810/12:27:36/UPI/stk-9033852656- 53 07-01-2026 07-01-2026 1@ok",
+      "type": "debit",
+      "amount": 30.0,
+      "currentBalance": 10519.57
+    },
+    {
+      "valueDate": "2026-01-07",
+      "narration": "UPI/635080250955/17:05:54/UPI/paytmqr6qal0h@pty 54 07-01-2026 07-01-2026 s/",
+      "type": "debit",
+      "amount": 30.0,
+      "currentBalance": 10489.57
+    },
+    {
+      "valueDate": "2026-01-07",
+      "narration": "UPI/600757016507/21:08:20/UPI/hennadharda.20@ok 55 07-01-2026 07-01-2026 ic",
+      "type": "credit",
+      "amount": 4400.0,
+      "currentBalance": 14889.57
+    },
+    {
+      "valueDate": "2026-01-07",
+      "narration": "UPI/657000935918/21:46:26/UPI/paytmqr8up3voxi14 56 07-01-2026 07-01-2026 @p",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 14869.57
+    },
+    {
+      "valueDate": "2026-01-07",
+      "narration": "UPI/637317507704/22:18:42/UPI/cred.club@axisb/pay 57 07-01-2026 07-01-2026",
+      "type": "debit",
+      "amount": 2990.0,
+      "currentBalance": 11879.57
+    },
+    {
+      "valueDate": "2026-01-08",
+      "narration": "UPI/600843107590/03:55:07/UPI/JARRETAIL@ybl/Go 58 08-01-2026 08-01-2026 ld",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 11839.57
+    },
+    {
+      "valueDate": "2026-01-08",
+      "narration": "UPI/237486568569/16:26:03/UPI/Q153445540@ybl/P 59 08-01-2026 08-01-2026 aym",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 11819.57
+    },
+    {
+      "valueDate": "2026-01-08",
+      "narration": "UPI/855394438693/16:44:21/UPI/Q186508126@ybl/P 60 08-01-2026 08-01-2026 aym",
+      "type": "debit",
+      "amount": 30.0,
+      "currentBalance": 11789.57
+    },
+    {
+      "valueDate": "2026-01-08",
+      "narration": "UPI/075507108260/21:30:24/UPI/Q859479044@ybl/P 61 08-01-2026 08-01-2026 aym",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 11749.57
+    },
+    {
+      "valueDate": "2026-01-08",
+      "narration": "UPI/342860201995/22:34:24/UPI/Q404059702@ybl/P 62 08-01-2026 08-01-2026 aym",
+      "type": "debit",
+      "amount": 150.0,
+      "currentBalance": 11599.57
+    },
+    {
+      "valueDate": "2026-01-08",
+      "narration": "UPI/728956549123/23:04:01/UPI/62515917@idfcbank 63 08-01-2026 08-01-2026 /P",
+      "type": "debit",
+      "amount": 228.0,
+      "currentBalance": 11371.57
+    },
+    {
+      "valueDate": "2026-01-08",
+      "narration": "UPI/972818694057/00:20:33/UPI/9106207694@axl/Pa 64 08-01-2026 09-01-2026 ym",
+      "type": "debit",
+      "amount": 250.0,
+      "currentBalance": 11121.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/600949050266/02:57:47/UPI/JARRETAIL@ybl/Go 65 09-01-2026 09-01-2026 ld",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 11081.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/710484500402/12:55:35/UPI/paytm.s1sok42@pty/ 66 09-01-2026 09-01-2026 P",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 11061.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/298119858807/13:23:33/UPI/paytm- 67 09-01-2026 09-01-2026 81280698@ptyb",
+      "type": "debit",
+      "amount": 27.0,
+      "currentBalance": 11034.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/600964308685/14:13:52/UPI/pavuluri.7669@waax 68 09-01-2026 09-01-2026 i",
+      "type": "credit",
+      "amount": 66.0,
+      "currentBalance": 11100.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/600980456636/15:05:29/UPI/dhruvpatel312000- 69 09-01-2026 09-01-2026 4@",
+      "type": "credit",
+      "amount": 141.0,
+      "currentBalance": 11241.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/096325352899/16:28:16/UPI/9151266240- 70 09-01-2026 09-01-2026 3@axl/Pa",
+      "type": "credit",
+      "amount": 95.0,
+      "currentBalance": 11336.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/114065151052/17:27:53/UPI/8128734090- 71 09-01-2026 09-01-2026 2@axl/Ol",
+      "type": "credit",
+      "amount": 93.0,
+      "currentBalance": 11429.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/159907159164/17:32:40/UPI/Q861702561@ybl/P 72 09-01-2026 09-01-2026 aym",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 11409.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/637581261271/18:33:04/UPI/shivandanaa@okicici 73 09-01-2026 09-01-2026",
+      "type": "credit",
+      "amount": 102.0,
+      "currentBalance": 11511.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/560626518369/19:11:44/UPI/pinelabs.10619365 74 09-01-2026 09-01-2026 @h",
+      "type": "debit",
+      "amount": 150.0,
+      "currentBalance": 11361.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/116937067194/19:53:03/UPI/akpatel1542- 75 09-01-2026 09-01-2026 1@okhdf",
+      "type": "credit",
+      "amount": 100.0,
+      "currentBalance": 11461.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/837225027106/19:55:10/UPI/paytmqr5d1vo1@pty 76 09-01-2026 09-01-2026 s/",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 11441.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/983678638319/20:42:49/UPI/paytm.s1lr5gl@pty/P 77 09-01-2026 09-01-2026",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 11421.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "IMPS/P2A/600922718558/RISING STARS/DASTI 78 09-01-2026 09-01-2026 KMB91777",
+      "type": "credit",
+      "amount": 45000.0,
+      "currentBalance": 56421.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/559227010620/22:21:19/UPI/30950100014039@ 79 09-01-2026 09-01-2026 BARB",
+      "type": "debit",
+      "amount": 18000.0,
+      "currentBalance": 38421.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/952012236093/22:24:25/UPI/KREDITBEEONLINE 80 09-01-2026 09-01-2026 @axl",
+      "type": "debit",
+      "amount": 7957.0,
+      "currentBalance": 30464.57
+    },
+    {
+      "valueDate": "2026-01-09",
+      "narration": "UPI/400253469017/22:30:59/UPI/9106207694@axl/Pa 81 09-01-2026 09-01-2026 ym",
+      "type": "debit",
+      "amount": 1000.0,
+      "currentBalance": 29464.57
+    },
+    {
+      "valueDate": "2026-01-10",
+      "narration": "82 10-01-2026 10-01-2026 Loan Recovery For30950600001870",
+      "type": "debit",
+      "amount": 5452.0,
+      "currentBalance": 24012.57
+    },
+    {
+      "valueDate": "2026-01-10",
+      "narration": "UPI/028012081175/09:45:44/UPI/paytmqr5f4p5l@ptys 83 10-01-2026 10-01-2026 /",
+      "type": "debit",
+      "amount": 10.0,
+      "currentBalance": 24002.57
+    },
+    {
+      "valueDate": "2026-01-10",
+      "narration": "UPI/504889151030/12:40:32/UPI/stk-9033852656- 84 10-01-2026 10-01-2026 1@ok",
+      "type": "debit",
+      "amount": 30.0,
+      "currentBalance": 23972.57
+    },
+    {
+      "valueDate": "2026-01-10",
+      "narration": "UPI/601054066551/18:38:39/UPI/bhojwanivarun600@ 85 10-01-2026 10-01-2026 ok",
+      "type": "credit",
+      "amount": 1500.0,
+      "currentBalance": 25472.57
+    },
+    {
+      "valueDate": "2026-01-10",
+      "narration": "UPI/309719872815/21:18:57/UPI/paytm.s1lqtgj@pty/P 86 10-01-2026 10-01-2026",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 25452.57
+    },
+    {
+      "valueDate": "2026-01-11",
+      "narration": "UPI/409205142467/12:01:03/UPI/stk-9033852656- 87 11-01-2026 11-01-2026 1@ok",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 25432.57
+    },
+    {
+      "valueDate": "2026-01-11",
+      "narration": "IMPS/P2A/601113823214/Instantpay 88 11-01-2026 11-01-2026 Indi/PayoutIDF91",
+      "type": "credit",
+      "amount": 7800.0,
+      "currentBalance": 33232.57
+    },
+    {
+      "valueDate": "2026-01-11",
+      "narration": "UPI/637707830723/13:26:17/UPI/bhojwanivarun600@ 89 11-01-2026 11-01-2026 ok",
+      "type": "credit",
+      "amount": 1000.0,
+      "currentBalance": 34232.57
+    },
+    {
+      "valueDate": "2026-01-11",
+      "narration": "UPI/310171691782/13:33:22/UPI/mustak9876786- 90 11-01-2026 11-01-2026 2@oki",
+      "type": "debit",
+      "amount": 25000.0,
+      "currentBalance": 9232.57
+    },
+    {
+      "valueDate": "2026-01-11",
+      "narration": "91 11-01-2026 11-01-2026 SMS Charges for NOV 25",
+      "type": "debit",
+      "amount": 0.71,
+      "currentBalance": 9231.86
+    },
+    {
+      "valueDate": "2026-01-12",
+      "narration": "UPI/637805699595/09:28:05/UPI/bhojwanivarun600@ 92 12-01-2026 12-01-2026 ok",
+      "type": "credit",
+      "amount": 800.0,
+      "currentBalance": 10031.86
+    },
+    {
+      "valueDate": "2026-01-12",
+      "narration": "UPI/540665056129/12:12:56/UPI/paytmqr5w9h0j@pty 93 12-01-2026 12-01-2026 s/",
+      "type": "debit",
+      "amount": 30.0,
+      "currentBalance": 10001.86
+    },
+    {
+      "valueDate": "2026-01-12",
+      "narration": "UPI/822444687246/13:31:25/UPI/Q618109232@ybl/P 94 12-01-2026 12-01-2026 aym",
+      "type": "debit",
+      "amount": 110.0,
+      "currentBalance": 9891.86
+    },
+    {
+      "valueDate": "2026-01-12",
+      "narration": "UPI/684164515881/14:36:07/UPI/9693313326- 95 12-01-2026 12-01-2026 2@axl/Pa",
+      "type": "credit",
+      "amount": 149.0,
+      "currentBalance": 10040.86
+    },
+    {
+      "valueDate": "2026-01-12",
+      "narration": "UPI/117074794007/15:19:52/UPI/godmodiff@okhdfcb 96 12-01-2026 12-01-2026 an",
+      "type": "credit",
+      "amount": 145.0,
+      "currentBalance": 10185.86
+    },
+    {
+      "valueDate": "2026-01-12",
+      "narration": "UPI/801064756763/15:48:04/UPI/7042284707@axl/Pa 97 12-01-2026 12-01-2026 ym",
+      "type": "credit",
+      "amount": 73.71,
+      "currentBalance": 10259.57
+    },
+    {
+      "valueDate": "2026-01-12",
+      "narration": "UPI/757213116772/16:08:43/UPI/Q622138707@ybl/P 98 12-01-2026 12-01-2026 aym",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 10219.57
+    },
+    {
+      "valueDate": "2026-01-12",
+      "narration": "UPI/179618618819/18:48:29/UPI/paytm.s1ww0gg@pt 99 12-01-2026 12-01-2026 y/P",
+      "type": "debit",
+      "amount": 35.0,
+      "currentBalance": 10184.57
+    },
+    {
+      "valueDate": "2026-01-12",
+      "narration": "UPI/846615794359/21:07:25/UPI/paytmqr6qako5@pty 100 12-01-2026 12-01-2026 s/",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 10164.57
+    },
+    {
+      "valueDate": "2026-01-13",
+      "narration": "NEFT-HDFCH00737313068-INDIAN CLEARING 101 13-01-2026 13-01-2026 CORPORATION",
+      "type": "credit",
+      "amount": 829.52,
+      "currentBalance": 10994.09
+    },
+    {
+      "valueDate": "2026-01-15",
+      "narration": "UPI/600011613030/21:33:23/UPI/Q852726586@ybl/P 102 15-01-2026 15-01-2026 aym",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 10954.09
+    },
+    {
+      "valueDate": "2026-01-15",
+      "narration": "UPI/115561930434/23:22:09/UPI/gpay- 103 15-01-2026 15-01-2026 11236688040@ok",
+      "type": "debit",
+      "amount": 55.0,
+      "currentBalance": 10899.09
+    },
+    {
+      "valueDate": "2026-01-16",
+      "narration": "UPI/280851530634/13:13:13/UPI/stk-9033852656- 104 16-01-2026 16-01-2026 1@ok",
+      "type": "debit",
+      "amount": 24.0,
+      "currentBalance": 10875.09
+    },
+    {
+      "valueDate": "2026-01-16",
+      "narration": "UPI/725098913647/13:21:57/UPI/Q722600738@ybl/P 105 16-01-2026 16-01-2026 aym",
+      "type": "debit",
+      "amount": 110.0,
+      "currentBalance": 10765.09
+    },
+    {
+      "valueDate": "2026-01-16",
+      "narration": "UPI/450359634888/14:42:47/UPI/9555447216@kotak 106 16-01-2026 16-01-2026 811",
+      "type": "debit",
+      "amount": 1500.0,
+      "currentBalance": 9265.09
+    },
+    {
+      "valueDate": "2026-01-16",
+      "narration": "UPI/734249080790/17:19:43/UPI/9106207694@axl/Pa 107 16-01-2026 16-01-2026 ym",
+      "type": "debit",
+      "amount": 250.0,
+      "currentBalance": 9015.09
+    },
+    {
+      "valueDate": "2026-01-16",
+      "narration": "UPI/311799562368/17:22:09/UPI/paytmqr13r71v@pay 108 16-01-2026 16-01-2026 tm",
+      "type": "debit",
+      "amount": 22.0,
+      "currentBalance": 8993.09
+    },
+    {
+      "valueDate": "2026-01-16",
+      "narration": "UPI/648903548171/19:02:18/UPI/cf.rapido12@cashfre 109 16-01-2026 16-01-2026",
+      "type": "debit",
+      "amount": 29.0,
+      "currentBalance": 8964.09
+    },
+    {
+      "valueDate": "2026-01-16",
+      "narration": "UPI/000289774962/21:47:12/UPI/9799306586@nyes/ 110 16-01-2026 16-01-2026 Pay",
+      "type": "credit",
+      "amount": 211.0,
+      "currentBalance": 9175.09
+    },
+    {
+      "valueDate": "2026-01-16",
+      "narration": "UPI/601616428435/22:19:44/UPI/jaswantushania@ok 111 16-01-2026 16-01-2026 ax",
+      "type": "credit",
+      "amount": 70.0,
+      "currentBalance": 9245.09
+    },
+    {
+      "valueDate": "2026-01-16",
+      "narration": "UPI/757606138551/23:01:58/UPI/8927978240- 112 16-01-2026 16-01-2026 2@ybl/Pa",
+      "type": "credit",
+      "amount": 112.0,
+      "currentBalance": 9357.09
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "113 17-01-2026 17-01-2026 SMS Charges for DEC 25",
+      "type": "debit",
+      "amount": 0.71,
+      "currentBalance": 9356.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/395634464699/11:15:17/UPI/9033237295@ptyes/ 114 17-01-2026 17-01-2026 Se",
+      "type": "credit",
+      "amount": 120.0,
+      "currentBalance": 9476.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/601729263782/12:27:27/UPI/8127870118@ptsbi/ 115 17-01-2026 17-01-2026 Se",
+      "type": "credit",
+      "amount": 210.0,
+      "currentBalance": 9686.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/298236545623/13:28:39/UPI/samlakecity@ybl/Pa 116 17-01-2026 17-01-2026 y",
+      "type": "credit",
+      "amount": 125.0,
+      "currentBalance": 9811.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/728704297217/13:35:39/UPI/Q262567296@ybl/P 117 17-01-2026 17-01-2026 aym",
+      "type": "debit",
+      "amount": 10.0,
+      "currentBalance": 9801.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/601709646137/14:32:00/UPI/janakparekh1995- 118 17-01-2026 17-01-2026 1@o",
+      "type": "credit",
+      "amount": 112.0,
+      "currentBalance": 9913.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/601712843886/15:17:44/UPI/vhoramahir960@oks 119 17-01-2026 17-01-2026 bi",
+      "type": "credit",
+      "amount": 30.0,
+      "currentBalance": 9943.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/909982236364/16:29:39/UPI/cf.rapido12@cashfre 120 17-01-2026 17-01-2026",
+      "type": "debit",
+      "amount": 29.0,
+      "currentBalance": 9914.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/638354003605/17:22:41/UPI/hmlathia-3@okicici/ 121 17-01-2026 17-01-2026",
+      "type": "credit",
+      "amount": 140.0,
+      "currentBalance": 10054.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/768081181745/18:01:19/UPI/9998577976- 122 17-01-2026 17-01-2026 2@ibl/Pa",
+      "type": "credit",
+      "amount": 54.0,
+      "currentBalance": 10108.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/638366449582/18:58:58/UPI/9104412434@fam/U 123 17-01-2026 17-01-2026 PI",
+      "type": "credit",
+      "amount": 98.0,
+      "currentBalance": 10206.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/638376140904/20:06:52/UPI/mandalsuman39- 124 17-01-2026 17-01-2026 4@oki",
+      "type": "credit",
+      "amount": 147.0,
+      "currentBalance": 10353.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/117340403379/20:59:19/UPI/rushiksolanki2308@ 125 17-01-2026 17-01-2026 o",
+      "type": "credit",
+      "amount": 163.0,
+      "currentBalance": 10516.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/697598916346/21:23:17/UPI/8733905401@ptyes/ 126 17-01-2026 17-01-2026 Se",
+      "type": "credit",
+      "amount": 65.0,
+      "currentBalance": 10581.38
+    },
+    {
+      "valueDate": "2026-01-17",
+      "narration": "UPI/117343212151/21:55:03/UPI/laxmimae171- 127 17-01-2026 17-01-2026 2@okhdf",
+      "type": "credit",
+      "amount": 85.0,
+      "currentBalance": 10666.38
+    },
+    {
+      "valueDate": "2026-01-18",
+      "narration": "IMPS/P2A/601812383073/RISING 128 18-01-2026 18-01-2026 STARS/DASTIKMB917779",
+      "type": "credit",
+      "amount": 4000.0,
+      "currentBalance": 14666.38
+    },
+    {
+      "valueDate": "2026-01-18",
+      "narration": "UPI/133905894198/12:28:39/UPI/8866883049@ibl/Pa 129 18-01-2026 18-01-2026 ym",
+      "type": "debit",
+      "amount": 5000.0,
+      "currentBalance": 9666.38
+    },
+    {
+      "valueDate": "2026-01-18",
+      "narration": "UPI/901866756680/14:44:00/UPI/paytm.s1t0ok2@pty/ 130 18-01-2026 18-01-2026 P",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 9626.38
+    },
+    {
+      "valueDate": "2026-01-18",
+      "narration": "UPI/711425073494/16:09:04/UPI/paytmqr6x0mef@pty 131 18-01-2026 18-01-2026 s/",
+      "type": "debit",
+      "amount": 80.0,
+      "currentBalance": 9546.38
+    },
+    {
+      "valueDate": "2026-01-18",
+      "narration": "UPI/755793804521/18:19:50/UPI/9106207694@ibl/Pa 132 18-01-2026 18-01-2026 ym",
+      "type": "debit",
+      "amount": 240.0,
+      "currentBalance": 9306.38
+    },
+    {
+      "valueDate": "2026-01-18",
+      "narration": "UPI/771413461261/20:18:33/UPI/paytmqr6k3yr3@pty 133 18-01-2026 18-01-2026 s/",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 9286.38
+    },
+    {
+      "valueDate": "2026-01-18",
+      "narration": "UPI/230479021246/21:52:18/UPI/Q207532604@ybl/P 134 18-01-2026 18-01-2026 aym",
+      "type": "debit",
+      "amount": 14.0,
+      "currentBalance": 9272.38
+    },
+    {
+      "valueDate": "2026-01-19",
+      "narration": "UPI/133762670107/14:21:18/UPI/paytmqr6d1vem@pt 135 19-01-2026 19-01-2026 ys/",
+      "type": "debit",
+      "amount": 15.0,
+      "currentBalance": 9257.38
+    },
+    {
+      "valueDate": "2026-01-19",
+      "narration": "UPI/323587636702/14:59:49/UPI/paynearby.98255097 136 19-01-2026 19-01-2026 0",
+      "type": "debit",
+      "amount": 10.0,
+      "currentBalance": 9247.38
+    },
+    {
+      "valueDate": "2026-01-19",
+      "narration": "UPI/842521987329/17:01:59/UPI/9824686073@axl/Pa 137 19-01-2026 19-01-2026 ym",
+      "type": "debit",
+      "amount": 10.0,
+      "currentBalance": 9237.38
+    },
+    {
+      "valueDate": "2026-01-19",
+      "narration": "UPI/855879541988/20:37:28/UPI/paytm.s1x36bx@pty/ 138 19-01-2026 19-01-2026 P",
+      "type": "debit",
+      "amount": 15.0,
+      "currentBalance": 9222.38
+    },
+    {
+      "valueDate": "2026-01-19",
+      "narration": "UPI/693868395606/22:52:32/UPI/paytmqr6lfkth@ptys/ 139 19-01-2026 19-01-2026",
+      "type": "debit",
+      "amount": 70.0,
+      "currentBalance": 9152.38
+    },
+    {
+      "valueDate": "2026-01-20",
+      "narration": "UPI/097360875465/19:06:00/UPI/9624602783- 140 20-01-2026 20-01-2026 2@okbiza",
+      "type": "debit",
+      "amount": 15.0,
+      "currentBalance": 9137.38
+    },
+    {
+      "valueDate": "2026-01-20",
+      "narration": "UPI/329681523425/21:46:20/UPI/8866559768- 141 20-01-2026 20-01-2026 2@ybl/Pa",
+      "type": "debit",
+      "amount": 15.0,
+      "currentBalance": 9122.38
+    },
+    {
+      "valueDate": "2026-01-20",
+      "narration": "142 20-01-2026 20-01-2026 UPI/329681523425/21:46:20/REVERSAL",
+      "type": "credit",
+      "amount": 15.0,
+      "currentBalance": 9137.38
+    },
+    {
+      "valueDate": "2026-01-20",
+      "narration": "UPI/244801014837/21:46:47/UPI/8866559768- 143 20-01-2026 20-01-2026 2@ybl/Pa",
+      "type": "debit",
+      "amount": 15.0,
+      "currentBalance": 9122.38
+    },
+    {
+      "valueDate": "2026-01-20",
+      "narration": "144 20-01-2026 20-01-2026 UPI/244801014837/21:46:47/REVERSAL",
+      "type": "credit",
+      "amount": 15.0,
+      "currentBalance": 9137.38
+    },
+    {
+      "valueDate": "2026-01-20",
+      "narration": "UPI/188605081407/21:47:25/UPI/bajajpay.6879729.m 145 20-01-2026 20-01-2026 2",
+      "type": "debit",
+      "amount": 15.0,
+      "currentBalance": 9122.38
+    },
+    {
+      "valueDate": "2026-01-20",
+      "narration": "UPI/286620873649/00:31:30/UPI/gpay- 146 20-01-2026 21-01-2026 11259498325@ok",
+      "type": "debit",
+      "amount": 65.0,
+      "currentBalance": 9057.38
+    },
+    {
+      "valueDate": "2026-01-21",
+      "narration": "UPI/958333331566/12:00:41/UPI/paytm.s1obw4f@pty/ 147 21-01-2026 21-01-2026 P",
+      "type": "debit",
+      "amount": 14.0,
+      "currentBalance": 9043.38
+    },
+    {
+      "valueDate": "2026-01-21",
+      "narration": "UPI/241317558146/13:49:37/UPI/paytmqr6kyil9@ptys/ 148 21-01-2026 21-01-2026",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 9023.38
+    },
+    {
+      "valueDate": "2026-01-21",
+      "narration": "UPI/381400113134/15:20:19/UPI/9824686073@axl/Pa 149 21-01-2026 21-01-2026 ym",
+      "type": "debit",
+      "amount": 100.0,
+      "currentBalance": 8923.38
+    },
+    {
+      "valueDate": "2026-01-21",
+      "narration": "UPI/938821901066/19:06:57/UPI/paytmqr6oa7yh@pty 150 21-01-2026 21-01-2026 s/",
+      "type": "debit",
+      "amount": 28.0,
+      "currentBalance": 8895.38
+    },
+    {
+      "valueDate": "2026-01-21",
+      "narration": "IMPS/P2A/602200114725/RISING 151 21-01-2026 22-01-2026 STARS/DASTIKMB917779",
+      "type": "credit",
+      "amount": 5000.0,
+      "currentBalance": 13895.38
+    },
+    {
+      "valueDate": "2026-01-21",
+      "narration": "UPI/342736133237/00:10:06/UPI/9555447216@kotak 152 21-01-2026 22-01-2026 811",
+      "type": "debit",
+      "amount": 5000.0,
+      "currentBalance": 8895.38
+    },
+    {
+      "valueDate": "2026-01-22",
+      "narration": "UPI/298802623214/10:25:37/UPI/paytm- 153 22-01-2026 22-01-2026 81280698@ptyb",
+      "type": "debit",
+      "amount": 29.0,
+      "currentBalance": 8866.38
+    },
+    {
+      "valueDate": "2026-01-22",
+      "narration": "UPI/602241589981/11:30:35/UPI/anilr.jayswal@oksbi 154 22-01-2026 22-01-2026",
+      "type": "credit",
+      "amount": 75.0,
+      "currentBalance": 8941.38
+    },
+    {
+      "valueDate": "2026-01-22",
+      "narration": "UPI/602257476708/12:06:36/UPI/rajeev453@ptaxis/S 155 22-01-2026 22-01-2026 e",
+      "type": "credit",
+      "amount": 82.0,
+      "currentBalance": 9023.38
+    },
+    {
+      "valueDate": "2026-01-22",
+      "narration": "UPI/042341945975/12:25:23/UPI/Q942166667@ybl/P 156 22-01-2026 22-01-2026 aym",
+      "type": "debit",
+      "amount": 14.0,
+      "currentBalance": 9009.38
+    },
+    {
+      "valueDate": "2026-01-22",
+      "narration": "UPI/585005010302/12:37:11/UPI/paytmqr675dzr@pty 157 22-01-2026 22-01-2026 s/",
+      "type": "debit",
+      "amount": 10.0,
+      "currentBalance": 8999.38
+    },
+    {
+      "valueDate": "2026-01-22",
+      "narration": "UPI/602251421735/13:39:55/UPI/devsumitdev2017- 158 22-01-2026 22-01-2026 1@o",
+      "type": "credit",
+      "amount": 146.0,
+      "currentBalance": 9145.38
+    },
+    {
+      "valueDate": "2026-01-22",
+      "narration": "UPI/531867362826/14:36:35/UPI/8511472407@axl/Pa 159 22-01-2026 22-01-2026 ym",
+      "type": "credit",
+      "amount": 120.0,
+      "currentBalance": 9265.38
+    },
+    {
+      "valueDate": "2026-01-22",
+      "narration": "IMPS/P2A/602219504377/RISING 160 22-01-2026 22-01-2026 STARS/DASTIKMB917779",
+      "type": "credit",
+      "amount": 2200.0,
+      "currentBalance": 11465.38
+    },
+    {
+      "valueDate": "2026-01-22",
+      "narration": "UPI/412561344128/19:21:59/UPI/Q453361473@ybl/P 161 22-01-2026 22-01-2026 aym",
+      "type": "debit",
+      "amount": 2600.0,
+      "currentBalance": 8865.38
+    },
+    {
+      "valueDate": "2026-01-23",
+      "narration": "BNC/CDAR/30950100014040/23-01-2026 162 23-01-2026 23-01-2026 19:28:46/SWT",
+      "type": "credit",
+      "amount": 20000.0,
+      "currentBalance": 28865.38
+    },
+    {
+      "valueDate": "2026-01-24",
+      "narration": "BNC/CDAR/30950100014040/24-01-2026 163 24-01-2026 24-01-2026 13:31:09/SWT",
+      "type": "credit",
+      "amount": 9500.0,
+      "currentBalance": 38365.38
+    },
+    {
+      "valueDate": "2026-01-24",
+      "narration": "ACHDR/SI CREVA CAPITAL 164 24-01-2026 24-01-2026 SER/3887225588/111200213240",
+      "type": "debit",
+      "amount": 12055.0,
+      "currentBalance": 26310.38
+    },
+    {
+      "valueDate": "2026-01-25",
+      "narration": "UPI/796628002436/06:56:51/UPI/mustak9876786- 165 25-01-2026 25-01-2026 2@oki",
+      "type": "debit",
+      "amount": 10000.0,
+      "currentBalance": 16310.38
+    },
+    {
+      "valueDate": "2026-01-25",
+      "narration": "UPI/288506794732/07:16:50/UPI/9106207694@ybl/Pa 166 25-01-2026 25-01-2026 ym",
+      "type": "debit",
+      "amount": 1500.0,
+      "currentBalance": 14810.38
+    },
+    {
+      "valueDate": "2026-01-25",
+      "narration": "UPI/398965476559/07:43:21/UPI/JIOINAPPDIRECT@ 167 25-01-2026 25-01-2026 ybl/",
+      "type": "debit",
+      "amount": 322.0,
+      "currentBalance": 14488.38
+    },
+    {
+      "valueDate": "2026-01-25",
+      "narration": "UPI/680434881518/12:57:38/UPI/9428987102@ybl/Pa 168 25-01-2026 25-01-2026 ym",
+      "type": "credit",
+      "amount": 1100.0,
+      "currentBalance": 15588.38
+    },
+    {
+      "valueDate": "2026-01-25",
+      "narration": "UPI/947847036143/16:36:45/UPI/kokila9504@oksbi/P 169 25-01-2026 25-01-2026 a",
+      "type": "debit",
+      "amount": 600.0,
+      "currentBalance": 14988.38
+    },
+    {
+      "valueDate": "2026-01-25",
+      "narration": "UPI/841745636426/22:08:14/UPI/ibkPOS.EP005114@ 170 25-01-2026 25-01-2026 ici",
+      "type": "debit",
+      "amount": 692.0,
+      "currentBalance": 14296.38
+    },
+    {
+      "valueDate": "2026-01-26",
+      "narration": "UPI/136216888472/21:34:20/UPI/bobncr@barodampa 171 26-01-2026 26-01-2026 y/6",
+      "type": "debit",
+      "amount": 500.0,
+      "currentBalance": 13796.38
+    },
+    {
+      "valueDate": "2026-01-28",
+      "narration": "UPI/914177438627/19:27:47/UPI/Vyapar.1686253736 172 28-01-2026 28-01-2026 89",
+      "type": "debit",
+      "amount": 22.0,
+      "currentBalance": 13774.38
+    },
+    {
+      "valueDate": "2026-01-28",
+      "narration": "UPI/948396104550/23:05:36/UPI/6367764879@kotak/ 173 28-01-2026 28-01-2026 Pa",
+      "type": "debit",
+      "amount": 115.0,
+      "currentBalance": 13659.38
+    },
+    {
+      "valueDate": "2026-01-29",
+      "narration": "UPI/250504402048/13:18:40/UPI/Q915669360@axl/P 174 29-01-2026 29-01-2026 aym",
+      "type": "debit",
+      "amount": 1103.0,
+      "currentBalance": 12556.38
+    },
+    {
+      "valueDate": "2026-01-29",
+      "narration": "UPI/356257743798/18:14:30/UPI/9374636261@pthdfc 175 29-01-2026 29-01-2026 /V",
+      "type": "debit",
+      "amount": 2200.0,
+      "currentBalance": 10356.38
+    },
+    {
+      "valueDate": "2026-01-29",
+      "narration": "UPI/722235623049/20:02:38/UPI/sachinthakker888@a 176 29-01-2026 29-01-2026 x",
+      "type": "debit",
+      "amount": 1425.0,
+      "currentBalance": 8931.38
+    },
+    {
+      "valueDate": "2026-01-30",
+      "narration": "IMPS/P2A/603020086058/RISING STARS/DASTI 177 30-01-2026 30-01-2026 KMB91777",
+      "type": "credit",
+      "amount": 15000.0,
+      "currentBalance": 23931.38
+    },
+    {
+      "valueDate": "2026-01-31",
+      "narration": "UPI/239540493005/10:34:03/UPI/gpay- 178 31-01-2026 31-01-2026 11259498325@ok",
+      "type": "debit",
+      "amount": 15.0,
+      "currentBalance": 23916.38
+    },
+    {
+      "valueDate": "2026-01-31",
+      "narration": "UPI/024585436704/11:20:10/UPI/Q076653447@ybl/P 179 31-01-2026 31-01-2026 aym",
+      "type": "debit",
+      "amount": 110.0,
+      "currentBalance": 23806.38
+    },
+    {
+      "valueDate": "2026-01-31",
+      "narration": "UPI/937244668388/12:27:26/UPI/7990977556- 180 31-01-2026 31-01-2026 2@ybl/Aa",
+      "type": "debit",
+      "amount": 1000.0,
+      "currentBalance": 22806.38
+    },
+    {
+      "valueDate": "2026-01-31",
+      "narration": "UPI/087173156633/12:51:41/UPI/Vyapar.1750275474 181 31-01-2026 31-01-2026 29",
+      "type": "debit",
+      "amount": 45.0,
+      "currentBalance": 22761.38
+    },
+    {
+      "valueDate": "2026-01-31",
+      "narration": "UPI/289697379128/19:09:07/UPI/9824686073@axl/Pa 182 31-01-2026 31-01-2026 ym",
+      "type": "debit",
+      "amount": 280.0,
+      "currentBalance": 22481.38
+    },
+    {
+      "valueDate": "2026-01-31",
+      "narration": "UPI/603122218484/22:36:48/UPI/fincfriendspriv7142 183 31-01-2026 31-01-2026",
+      "type": "debit",
+      "amount": 13360.0,
+      "currentBalance": 9121.38
+    },
+    {
+      "valueDate": "2026-02-01",
+      "narration": "UPI/493262997198/13:50:55/UPI/paytm.s1t10k4@pty/ 184 01-02-2026 01-02-2026 P",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 9081.38
+    },
+    {
+      "valueDate": "2026-02-01",
+      "narration": "UPI/917420919034/14:01:28/UPI/Q310951361@ybl/P 185 01-02-2026 01-02-2026 aym",
+      "type": "debit",
+      "amount": 200.0,
+      "currentBalance": 8881.38
+    },
+    {
+      "valueDate": "2025-11-01",
+      "narration": "30950100014040:Int.Pd:01-11-2025 to 31-01-2026 186 01-02-2026 31-01-2026",
+      "type": "credit",
+      "amount": 106.0,
+      "currentBalance": 8987.38
+    },
+    {
+      "valueDate": "2026-02-01",
+      "narration": "UPI/556178775846/20:29:29/UPI/Q512878749@ybl/P 187 01-02-2026 01-02-2026 aym",
+      "type": "debit",
+      "amount": 20.0,
+      "currentBalance": 8967.38
+    },
+    {
+      "valueDate": "2026-02-01",
+      "narration": "UPI/603206848043/22:22:46/UPI/bhojwanivarun600@ 188 01-02-2026 01-02-2026 ok",
+      "type": "credit",
+      "amount": 8000.0,
+      "currentBalance": 16967.38
+    },
+    {
+      "valueDate": "2026-02-01",
+      "narration": "IMPS/P2A/603222098281/RISING STARS/DASTI 189 01-02-2026 01-02-2026 KMB91777",
+      "type": "credit",
+      "amount": 90000.0,
+      "currentBalance": 106967.38
+    },
+    {
+      "valueDate": "2026-02-01",
+      "narration": "UPI/333664184397/22:53:18/UPI/mamta.bhambhani20 190 01-02-2026 01-02-2026 @o",
+      "type": "debit",
+      "amount": 93000.0,
+      "currentBalance": 13967.38
+    },
+    {
+      "valueDate": "2026-02-02",
+      "narration": "UPI/603315804896/14:00:30/UPI/hennadharda.20@ok 191 02-02-2026 02-02-2026 ic",
+      "type": "credit",
+      "amount": 3700.0,
+      "currentBalance": 17667.38
+    },
+    {
+      "valueDate": "2026-02-02",
+      "narration": "UPI/102613665819/14:18:59/UPI/bflautopay@hdfcban 192 02-02-2026 02-02-2026 k",
+      "type": "debit",
+      "amount": 1471.0,
+      "currentBalance": 16196.38
+    },
+    {
+      "valueDate": "2026-02-02",
+      "narration": "UPI/195473738985/14:55:58/UPI/paytmqr6bj1ps@ptys 193 02-02-2026 02-02-2026 /",
+      "type": "debit",
+      "amount": 30.0,
+      "currentBalance": 16166.38
+    },
+    {
+      "valueDate": "2026-02-02",
+      "narration": "UPI/205517627388/17:11:43/UPI/9099936338@ybl/Pa 194 02-02-2026 02-02-2026 ym",
+      "type": "debit",
+      "amount": 1000.0,
+      "currentBalance": 15166.38
+    },
+    {
+      "valueDate": "2026-02-02",
+      "narration": "UPI/603333803016/18:18:10/UPI/JARRETAIL@ybl/Go 195 02-02-2026 02-02-2026 ld",
+      "type": "debit",
+      "amount": 40.0,
+      "currentBalance": 15126.38
+    },
+    {
+      "valueDate": "2026-02-02",
+      "narration": "UPI/603346396415/21:41:26/UPI/mamta.bhambhani20 196 02-02-2026 02-02-2026 @o",
+      "type": "credit",
+      "amount": 2000.0,
+      "currentBalance": 17126.38
+    },
+    {
+      "valueDate": "2026-02-02",
+      "narration": "IMPS/P2A/603321661662/RISING 197 02-02-2026 02-02-2026 STARS/DASTIKMB917779",
+      "type": "credit",
+      "amount": 3000.0,
+      "currentBalance": 20126.38
+    },
+    {
+      "valueDate": "2026-02-02",
+      "narration": "UPI/267338854492/22:41:59/UPI/Q959826076@ybl/P 198 02-02-2026 02-02-2026 aym",
+      "type": "debit",
+      "amount": 110.0,
+      "currentBalance": 20016.38
+    },
+    {
+      "valueDate": "2026-02-02",
+      "narration": "UPI/933857166437/22:55:13/UPI/gpay- 199 02-02-2026 02-02-2026 11246807802@ok",
+      "type": "debit",
+      "amount": 143.0,
+      "currentBalance": 19873.38
+    },
+    {
+      "valueDate": "2026-02-02",
+      "narration": "UPI/866677145905/23:06:55/UPI/gpay- 200 02-02-2026 02-02-2026 11249068970@ok",
+      "type": "debit",
+      "amount": 250.0,
+      "currentBalance": 19623.38
+    },
+    {
+      "valueDate": "2026-02-02",
+      "narration": "UPI/990294042977/23:29:35/UPI/gpay- 201 02-02-2026 02-02-2026 11259498325@ok",
+      "type": "debit",
+      "amount": 33.0,
+      "currentBalance": 19590.38
+    }
+  ],
+  "gstSummary": {
+    "gstNumber": "24CLKPB2341C1ZT",
+    "legalName": "AAKASH BHOJWANI",
+    "tradeName": "RISING STARS",
+    "monthsFiled": 12,
+    "annualTurnover": 2052610
+  },
+  "checkExceptions": [
+    {
+      "code": "MISSING_KYC",
+      "severity": "medium",
+      "message": "Expected kyc document not provided",
+      "source": "check"
+    },
+    {
+      "code": "MISSING_BUREAU",
+      "severity": "medium",
+      "message": "Expected bureau document not provided",
+      "source": "check"
+    }
+  ]
+}

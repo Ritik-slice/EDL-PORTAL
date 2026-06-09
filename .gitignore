@@ -1,28 +1,39 @@
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 venv/
-.env
-*.db
+*.egg-info/
 
 # Node
 node_modules/
 dist/
-package-lock.json
+
+# Environment
+.env
+*.env.local
 
 # IDE
 .vscode/
 .idea/
-*.swp
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Large binary data files (kept locally, not in git)
+data/*/documents/*.jpg
+data/*/documents/*.pdf
+data/*/documents/*.zip
+data/*/documents/*.png
+data/*/*.xlsm
+data/*/*.zip
+data/*/uploads/
+data/*/documents/credit_other-*_extracted/
+~$*
 
 # Docker
 pg_data/
 
 # Temp
 /tmp/
-*.log
+*.db

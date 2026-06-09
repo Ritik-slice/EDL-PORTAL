@@ -25,6 +25,9 @@ class LoanType(str, enum.Enum):
     working_capital = "working_capital"
     overdraft = "overdraft"
     cc_limit = "cc_limit"
+    edl_stock = "EDL_STOCK"
+    edl_pm = "EDL_PM"
+    edl_property = "EDL_PROPERTY"
 
 
 class Case(Base):
@@ -40,7 +43,7 @@ class Case(Base):
     industry: Mapped[str] = mapped_column(String(100), nullable=True)
 
     loan_amount_requested: Mapped[float] = mapped_column(Float, nullable=False)
-    loan_type: Mapped[LoanType] = mapped_column(SAEnum(LoanType), default=LoanType.term_loan)
+    loan_type: Mapped[str] = mapped_column(String(50), default="term_loan")
     loan_purpose: Mapped[str] = mapped_column(String(500), nullable=True)
     loan_tenor_months: Mapped[int] = mapped_column(nullable=True)
 
